@@ -5,8 +5,8 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   APP_NAME: z.string().default("tdp"),
-  APP_URL: z.string().url().default("http://localhost:3000"),
-  PORT: z.coerce.number().default(3000),
+  APP_URL: z.string().url().default("http://localhost:3002"),
+  PORT: z.coerce.number().default(3002),
 
   DATABASE_URL: z.string().url(),
 
