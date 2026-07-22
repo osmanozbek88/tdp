@@ -1,0 +1,344 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenant & Organization ───
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  domain      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  distributors Distributor[]
+  dealers      Dealer[]
+  subDealers   SubDealer[]
+  users        User[]
+  customers    Customer[]
+  products     Product[]
+  orders       Order[]
+}
+
+model Distributor {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String   @unique
+  email       String
+  phone       String?
+  isActive    Boolean  @default(true)
+  balance     Decimal  @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  dealers     Dealer[]
+  subDealers  SubDealer[] @relation("DistributorSubDealers")
+  users       User[]
+  customers   Customer[]
+  orders      Order[]
+}
+
+model Dealer {
+  id             String   @id @default(cuid())
+  distributorId  String
+  tenantId       String
+  name           String
+  code           String   @unique
+  email          String
+  phone          String?
+  isActive       Boolean  @default(true)
+  balance        Decimal  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  subDealers  SubDealer[]
+  users       User[]
+  customers   Customer[]
+  orders      Order[]
+}
+
+model SubDealer {
+  id             String   @id @default(cuid())
+  dealerId       String
+  distributorId  String
+  tenantId       String
+  name           String
+  code           String   @unique
+  email          String
+  phone          String?
+  isActive       Boolean  @default(true)
+  balance        Decimal  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  dealer      Dealer      @relation(fields: [dealerId], references: [id])
+  distributor Distributor @relation("DistributorSubDealers", fields: [distributorId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  users       User[]
+  customers   Customer[]
+  orders      Order[]
+}
+
+// ─── User & Auth ───
+
+enum UserRole {
+  SUPER_ADMIN
+  DISTRIBUTOR_ADMIN
+  DISTRIBUTOR_STAFF
+  DEALER_ADMIN
+  DEALER_STAFF
+  SUB_DEALER_ADMIN
+  SUB_DEALER_STAFF
+  CUSTOMER
+}
+
+model User {
+  id             String   @id @default(cuid())
+  tenantId       String
+  distributorId  String?
+  dealerId       String?
+  subDealerId    String?
+  email          String   @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole @default(CUSTOMER)
+  isActive       Boolean  @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  distributor Distributor? @relation(fields: [distributorId], references: [id])
+  dealer     Dealer?    @relation(fields: [dealerId], references: [id])
+  subDealer  SubDealer? @relation(fields: [subDealerId], references: [id])
+  customers  Customer[] @relation("SalesAgent")
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  tenantId     String
+  distributorId String?
+  dealerId     String?
+  subDealerId  String?
+  salesAgentId String?
+  email        String   @unique
+  firstName    String
+  lastName     String
+  phone        String?
+  countryCode  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  distributor Distributor? @relation(fields: [distributorId], references: [id])
+  dealer     Dealer?     @relation(fields: [dealerId], references: [id])
+  subDealer  SubDealer?  @relation(fields: [subDealerId], references: [id])
+  salesAgent User?       @relation("SalesAgent", fields: [salesAgentId], references: [id])
+  orders     Order[]
+  esims      ESim[]
+}
+
+// ─── Product Catalog ───
+
+model Product {
+  id              String   @id @default(cuid())
+  tenantId        String
+  telnaProductId  String   @unique
+  name            String
+  description     String?
+  type            String   // ESIM, DATA_BUNDLE, VOICE_BUNDLE, TOPUP
+  country         String
+  region          String?
+  currency        String   @default("USD")
+  price           Decimal
+  costPrice       Decimal?
+  specifications  Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Country {
+  id       String @id @default(cuid())
+  isoCode  String @unique
+  name     String
+  dialCode String
+  isActive Boolean @default(true)
+
+  regions Region[]
+}
+
+model Region {
+  id        String  @id @default(cuid())
+  countryId String
+  code      String
+  name      String
+
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@unique([countryId, code])
+}
+
+// ─── Order Management ───
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  PAID
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  tenantId       String
+  distributorId  String?
+  dealerId       String?
+  subDealerId    String?
+  customerId     String?
+  status         OrderStatus @default(DRAFT)
+  telnaOrderId   String?     @unique
+  currency       String      @default("USD")
+  totalAmount    Decimal     @default(0)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  distributor Distributor? @relation(fields: [distributorId], references: [id])
+  dealer     Dealer?    @relation(fields: [dealerId], references: [id])
+  subDealer  SubDealer? @relation(fields: [subDealerId], references: [id])
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+  payments   Payment[]
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  productId      String
+  telnaItemId    String?
+  iccid          String?
+  quantity       Int      @default(1)
+  unitPrice      Decimal
+  totalPrice     Decimal
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  orderId        String
+  amount         Decimal
+  currency       String   @default("USD")
+  method         String   // CREDIT_CARD, BANK_TRANSFER, WALLET
+  status         String   // PENDING, COMPLETED, FAILED, REFUNDED
+  transactionId  String?  @unique
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+// ─── eSIM ───
+
+model ESim {
+  id              String   @id @default(cuid())
+  iccid           String   @unique
+  tenantId        String
+  distributorId   String?
+  dealerId        String?
+  subDealerId     String?
+  customerId      String?
+  orderItemId     String?  @unique
+  status          String   @default("AVAILABLE") // AVAILABLE, ASSIGNED, ACTIVATED, SUSPENDED, TERMINATED, EXPIRED
+  imsi            String?
+  msisdn          String?
+  qrCodeUrl       String?
+  activationCode  String?
+  smdpAddress     String?
+  activatedAt     DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer    Customer?     @relation(fields: [customerId], references: [id])
+  usageRecords UsageRecord[]
+}
+
+// ─── Usage ───
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  esimId    String
+  type      String   // DATA, VOICE, SMS
+  usedAmount Decimal
+  totalAmount Decimal
+  unit      String   // MB, GB, MIN, SMS
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt DateTime @default(now())
+
+  esim ESim @relation(fields: [esimId], references: [id])
+}
+
+// ─── Webhook Log ───
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  eventType String
+  source    String   @default("telna")
+  payload   Json
+  status    String   // RECEIVED, PROCESSED, FAILED
+  error     String?
+  processedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+// ─── Audit Log ───
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  action     String
+  entity     String
+  entityId   String?
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+}
