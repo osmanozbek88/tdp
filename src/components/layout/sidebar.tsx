@@ -21,14 +21,14 @@ import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
-  { label: "Products", href: "/dashboard/products", icon: Package },
-  { label: "Customers", href: "/dashboard/customers", icon: Users },
-  { label: "Tenants", href: "/dashboard/tenants", icon: Building2 },
-  { label: "eSIMs", href: "/dashboard/esims", icon: Globe },
-  { label: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "Genel Bakış", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Siparişler", href: "/dashboard/orders", icon: ShoppingCart },
+  { label: "Ürünler", href: "/dashboard/products", icon: Package },
+  { label: "Müşteriler", href: "/dashboard/customers", icon: Users },
+  { label: "Bayiler", href: "/dashboard/tenants", icon: Building2 },
+  { label: "eSIM'ler", href: "/dashboard/esims", icon: Globe },
+  { label: "Raporlar", href: "/dashboard/reports", icon: BarChart3 },
+  { label: "Ayarlar", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -99,7 +99,7 @@ export function Sidebar() {
           onClick={() => setCollapsed(!collapsed)}
           className={cn("w-full", collapsed ? "justify-center px-2" : "justify-start")}
         >
-          {collapsed ? <ChevronRight className="h-5 w-5" /> : <><ChevronLeft className="h-5 w-5" /> Collapse</>}
+          {collapsed ? <ChevronRight className="h-5 w-5" /> : <><ChevronLeft className="h-5 w-5" /> Daralt</>}
         </Button>
         <Link
           href="/login"
@@ -109,7 +109,7 @@ export function Sidebar() {
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          {!collapsed && <span>Çıkış Yap</span>}
         </Link>
       </div>
     </aside>

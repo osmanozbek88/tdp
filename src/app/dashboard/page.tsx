@@ -26,36 +26,36 @@ import {
 
 const stats = [
   {
-    title: "Total Revenue",
+    title: "Toplam Gelir",
     value: "$48,250",
-    change: "+12.5%",
+    change: "+%12.5",
     trend: "up",
     icon: DollarSign,
-    description: "vs last month",
+    description: "geçen aya göre",
   },
   {
-    title: "Active Orders",
+    title: "Aktif Siparişler",
     value: "156",
-    change: "+8.2%",
+    change: "+%8.2",
     trend: "up",
     icon: ShoppingCart,
-    description: "vs last month",
+    description: "geçen aya göre",
   },
   {
-    title: "Total Customers",
+    title: "Toplam Müşteri",
     value: "2,847",
-    change: "+3.1%",
+    change: "+%3.1",
     trend: "up",
     icon: Users,
-    description: "vs last month",
+    description: "geçen aya göre",
   },
   {
-    title: "eSIMs Activated",
+    title: "Aktif Edilen eSIM",
     value: "1,423",
-    change: "-2.4%",
+    change: "-%2.4",
     trend: "down",
     icon: Globe,
-    description: "vs last month",
+    description: "geçen aya göre",
   },
 ];
 
@@ -86,9 +86,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page title */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Genel Bakış</h1>
         <p className="text-muted-foreground mt-1">
-          Welcome back! Here&apos;s what&apos;s happening with your platform today.
+          Hoş geldiniz! Platformunuzun bugünkü durumu aşağıda özetlenmiştir.
         </p>
       </div>
 
@@ -136,18 +136,18 @@ export default function DashboardPage() {
         {/* Recent Orders */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Latest orders across all channels</CardDescription>
+            <CardTitle>Son Siparişler</CardTitle>
+            <CardDescription>Tüm kanallardan en son siparişler</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Sipariş</TableHead>
+                  <TableHead>Müşteri</TableHead>
+                  <TableHead>Ürün</TableHead>
+                  <TableHead>Tutar</TableHead>
+                  <TableHead>Durum</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -172,17 +172,17 @@ export default function DashboardPage() {
         {/* Top Products */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>Top Products</CardTitle>
-            <CardDescription>Best selling products this month</CardDescription>
+            <CardTitle>En Çok Satanlar</CardTitle>
+            <CardDescription>Bu ayın en çok satan ürünleri</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  <TableHead>Units</TableHead>
-                  <TableHead>Growth</TableHead>
+                  <TableHead>Ürün</TableHead>
+                  <TableHead>Gelir</TableHead>
+                  <TableHead>Adet</TableHead>
+                  <TableHead>Büyüme</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,36 +207,36 @@ export default function DashboardPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Platform Activity</CardTitle>
+            <CardTitle>Platform Aktivitesi</CardTitle>
           </div>
           <CardDescription>
-            Real-time summary of your telecom distribution platform
+            Telekom dağıtım platformunuzun gerçek zamanlı özeti
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Orders Today</p>
+              <p className="text-sm text-muted-foreground">Bugünkü Siparişler</p>
               <p className="text-2xl font-bold mt-1">24</p>
               <div className="flex items-center gap-1 mt-1">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm text-emerald-500 font-medium">+18%</span>
+                <span className="text-sm text-emerald-500 font-medium">+%18</span>
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Revenue Today</p>
+              <p className="text-sm text-muted-foreground">Bugünkü Gelir</p>
               <p className="text-2xl font-bold mt-1">$1,847</p>
               <div className="flex items-center gap-1 mt-1">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm text-emerald-500 font-medium">+7%</span>
+                <span className="text-sm text-emerald-500 font-medium">+%7</span>
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Active eSIMs</p>
+              <p className="text-sm text-muted-foreground">Aktif eSIM</p>
               <p className="text-2xl font-bold mt-1">892</p>
               <div className="flex items-center gap-1 mt-1">
                 <TrendingDown className="h-4 w-4 text-red-500" />
-                <span className="text-sm text-red-500 font-medium">-3%</span>
+                <span className="text-sm text-red-500 font-medium">-%3</span>
               </div>
             </div>
           </div>

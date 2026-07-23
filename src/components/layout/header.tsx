@@ -29,7 +29,7 @@ export function Header() {
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search orders, customers..."
+            placeholder="Sipariş, müşteri ara..."
             className="pl-10 bg-muted/50 border-none"
           />
         </div>
@@ -59,17 +59,17 @@ export function Header() {
               </AvatarFallback>
             </Avatar>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium leading-none">Admin User</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Super Admin</p>
+              <p className="text-sm font-medium leading-none">Admin Kullanıcı</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Süper Yönetici</p>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>Hesabım</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>Profil</DropdownMenuItem>
+            <DropdownMenuItem>Ayarlar</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Logout</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">Çıkış Yap</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

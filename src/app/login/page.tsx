@@ -29,7 +29,7 @@ export default function LoginPage() {
     setError("");
 
     if (!email || !password) {
-      setError("Please fill in all fields");
+      setError("Lütfen tüm alanları doldurun");
       return;
     }
 
@@ -55,20 +55,20 @@ export default function LoginPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold">TDP</h1>
-                <p className="text-primary-foreground/80 text-sm">Telecom Distribution Platform</p>
+                <p className="text-primary-foreground/80 text-sm">Telekom Dağıtım Platformu</p>
               </div>
             </div>
             <div className="space-y-3 pt-6">
-              <h2 className="text-2xl font-semibold">Welcome back</h2>
+              <h2 className="text-2xl font-semibold">Hoş geldiniz</h2>
               <p className="text-primary-foreground/80 text-lg leading-relaxed max-w-md">
-                Manage your eSIM and data bundle distribution network. Track orders, manage customers, and grow your business.
+                eSIM ve veri paketi dağıtım ağınızı yönetin. Siparişleri takip edin, müşterilerinizi yönetin ve işinizi büyütün.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4 pt-8">
               {[
-                { value: "10K+", label: "Active eSIMs" },
-                { value: "500+", label: "Distributors" },
-                { value: "99.9%", label: "Uptime" },
+                { value: "10K+", label: "Aktif eSIM" },
+                { value: "500+", label: "Bayi" },
+                { value: "99.9%", label: "Çalışma Süresi" },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-xl bg-white/10 backdrop-blur p-4 text-center">
                   <p className="text-2xl font-bold">{stat.value}</p>
@@ -89,14 +89,14 @@ export default function LoginPage() {
               <Globe className="h-7 w-7 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold">TDP</h1>
-            <p className="text-muted-foreground text-sm">Telecom Distribution Platform</p>
+            <p className="text-muted-foreground text-sm">Telekom Dağıtım Platformu</p>
           </div>
 
           <Card className="border-none shadow-none lg:border lg:shadow-sm">
             <CardHeader className="lg:px-6">
-              <CardTitle className="text-xl">Sign in</CardTitle>
+              <CardTitle className="text-xl">Giriş Yap</CardTitle>
               <CardDescription>
-                Enter your credentials to access your account
+                Hesabınıza erişmek için kimlik bilgilerinizi girin
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
@@ -107,11 +107,11 @@ export default function LoginPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">E-posta</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@example.com"
+                    placeholder="ornek@firma.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
@@ -120,19 +120,19 @@ export default function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Şifre</Label>
                     <Link
                       href="#"
                       className="text-xs text-primary hover:underline"
                     >
-                      Forgot password?
+                      Şifremi unuttum?
                     </Link>
                   </div>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Şifrenizi girin"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
@@ -154,14 +154,14 @@ export default function LoginPage() {
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {loading ? "Signing in..." : "Sign in"}
+                  {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
                 </Button>
               </CardContent>
               <CardFooter className="flex-col gap-2 lg:px-6">
                 <p className="text-sm text-muted-foreground text-center">
-                  Don&apos;t have an account?{" "}
+                  Hesabınız yok mu?{" "}
                   <Link href="#" className="text-primary hover:underline font-medium">
-                    Contact support
+                    Destek ile iletişime geçin
                   </Link>
                 </p>
               </CardFooter>
@@ -169,7 +169,7 @@ export default function LoginPage() {
           </Card>
 
           <p className="text-xs text-muted-foreground text-center">
-            &copy; {new Date().getFullYear()} TDP. All rights reserved.
+            &copy; {new Date().getFullYear()} TDP. Tüm hakları saklıdır.
           </p>
         </div>
       </div>
