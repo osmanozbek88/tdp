@@ -1,5 +1,5 @@
 import pino from "pino";
-import { getEnv } from "@/config";
+import { getEnv } from "@/lib/config";
 
 let loggerInstance: pino.Logger | null = null;
 
