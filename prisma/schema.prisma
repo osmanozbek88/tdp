@@ -26,45 +26,54 @@ model Tenant {
   customers    Customer[]
   products     Product[]
   orders       Order[]
+  priceGroups  PriceGroup[]
 }
 
 model Distributor {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  code        String   @unique
-  email       String
-  phone       String?
-  isActive    Boolean  @default(true)
-  balance     Decimal  @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String   @unique
+  email           String
+  phone           String?
+  address         String?
+  isActive        Boolean  @default(true)
+  balance         Decimal  @default(0)
+  commissionRate  Decimal  @default(0)
+  priceGroupId    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  priceGroup  PriceGroup?  @relation(fields: [priceGroupId], references: [id])
   dealers     Dealer[]
-  subDealers  SubDealer[] @relation("DistributorSubDealers")
+  subDealers  SubDealer[]  @relation("DistributorSubDealers")
   users       User[]
   customers   Customer[]
   orders      Order[]
 }
 
 model Dealer {
-  id             String   @id @default(cuid())
-  distributorId  String
-  tenantId       String
-  name           String
-  code           String   @unique
-  email          String
-  phone          String?
-  isActive       Boolean  @default(true)
-  balance        Decimal  @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  id              String   @id @default(cuid())
+  distributorId   String
+  tenantId        String
+  name            String
+  code            String   @unique
+  email           String
+  phone           String?
+  address         String?
+  isActive        Boolean  @default(true)
+  balance         Decimal  @default(0)
+  commissionRate  Decimal  @default(0)
+  priceGroupId    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
   distributor Distributor @relation(fields: [distributorId], references: [id])
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  priceGroup  PriceGroup?  @relation(fields: [priceGroupId], references: [id])
   subDealers  SubDealer[]
   users       User[]
   customers   Customer[]
@@ -72,26 +81,50 @@ model Dealer {
 }
 
 model SubDealer {
-  id             String   @id @default(cuid())
-  dealerId       String
-  distributorId  String
-  tenantId       String
-  name           String
-  code           String   @unique
-  email          String
-  phone          String?
-  isActive       Boolean  @default(true)
-  balance        Decimal  @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  id              String   @id @default(cuid())
+  dealerId        String
+  distributorId   String
+  tenantId        String
+  name            String
+  code            String   @unique
+  email           String
+  phone           String?
+  address         String?
+  isActive        Boolean  @default(true)
+  balance         Decimal  @default(0)
+  commissionRate  Decimal  @default(0)
+  priceGroupId    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
   dealer      Dealer      @relation(fields: [dealerId], references: [id])
   distributor Distributor @relation("DistributorSubDealers", fields: [distributorId], references: [id])
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  priceGroup  PriceGroup?  @relation(fields: [priceGroupId], references: [id])
   users       User[]
   customers   Customer[]
   orders      Order[]
+}
+
+// ─── Pricing ───
+
+model PriceGroup {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  markupPercent Decimal  @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  distributors  Distributor[]
+  dealers       Dealer[]
+  subDealers    SubDealer[]
+
+  @@unique([tenantId, name])
 }
 
 // ─── User & Auth ───

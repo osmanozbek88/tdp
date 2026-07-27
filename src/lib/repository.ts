@@ -29,7 +29,7 @@ export class BaseRepository<T, CreateInput, UpdateInput> {
     this.model = modelName;
   }
 
-  private delegate(): PrismaClient[PrismaModel] {
+  public delegate(): PrismaClient[PrismaModel] {
     return prisma[this.model];
   }
 
@@ -75,7 +75,7 @@ export class BaseRepository<T, CreateInput, UpdateInput> {
   async delete(id: string): Promise<T> {
     return this.delegate().update({
       where: { id },
-      data: { deleted_at: new Date() },
+      data: { deletedAt: new Date() },
     }) as unknown as Promise<T>;
   }
 

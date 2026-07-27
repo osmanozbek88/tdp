@@ -26,7 +26,7 @@ const navItems = [
   { label: "Siparişler", href: "/dashboard/orders", icon: ShoppingCart },
   { label: "Ürünler", href: "/dashboard/products", icon: Package },
   { label: "Müşteriler", href: "/dashboard/customers", icon: Users },
-  { label: "Bayiler", href: "/dashboard/tenants", icon: Building2 },
+  { label: "Organizasyon", href: "/dashboard/organization", icon: Building2 },
   { label: "eSIM'ler", href: "/dashboard/esims", icon: Globe },
   { label: "Raporlar", href: "/dashboard/reports", icon: BarChart3 },
   { label: "Ayarlar", href: "/dashboard/settings", icon: Settings },
