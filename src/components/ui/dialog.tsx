@@ -11,7 +11,7 @@ function Dialog({ open, onOpenChange, children, ...props }: React.ComponentProps
     <BaseDialog.Root open={open} onOpenChange={onOpenChange} {...props}>
       <BaseDialog.Portal>
         <BaseDialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-        <BaseDialog.Popup className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[85vh] overflow-auto rounded-xl bg-background p-6 shadow-lg ring-1 ring-foreground/10">
+        <BaseDialog.Popup className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[85vh] overflow-auto rounded-xl bg-white dark:bg-gray-950 p-6 shadow-lg ring-1 ring-gray-200 dark:ring-gray-800">
           {children}
         </BaseDialog.Popup>
       </BaseDialog.Portal>
