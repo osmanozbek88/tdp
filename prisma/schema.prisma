@@ -104,31 +104,87 @@ enum UserRole {
   DEALER_STAFF
   SUB_DEALER_ADMIN
   SUB_DEALER_STAFF
+  EMPLOYEE
   CUSTOMER
 }
 
-model User {
-  id             String   @id @default(cuid())
-  tenantId       String
-  distributorId  String?
-  dealerId       String?
-  subDealerId    String?
-  email          String   @unique
-  passwordHash   String
-  firstName      String
-  lastName       String
-  role           UserRole @default(CUSTOMER)
-  isActive       Boolean  @default(true)
-  lastLoginAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+enum MFAMethod {
+  TOTP
+  EMAIL
+}
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id])
-  distributor Distributor? @relation(fields: [distributorId], references: [id])
-  dealer     Dealer?    @relation(fields: [dealerId], references: [id])
-  subDealer  SubDealer? @relation(fields: [subDealerId], references: [id])
-  customers  Customer[] @relation("SalesAgent")
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model User {
+  id              String   @id @default(cuid())
+  tenantId        String
+  distributorId   String?
+  dealerId        String?
+  subDealerId     String?
+  email           String   @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            UserRole @default(CUSTOMER)
+  isActive        Boolean  @default(true)
+  emailVerifiedAt DateTime?
+  mfaEnabled      Boolean  @default(false)
+  mfaMethod       MFAMethod?
+  mfaSecret       String?
+  lastLoginAt     DateTime?
+  passwordChangedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id])
+  distributor         Distributor?              @relation(fields: [distributorId], references: [id])
+  dealer              Dealer?                   @relation(fields: [dealerId], references: [id])
+  subDealer           SubDealer?                @relation(fields: [subDealerId], references: [id])
+  customers           Customer[]                @relation("SalesAgent")
+  refreshTokens       RefreshToken[]
+  emailVerifications  EmailVerificationToken[]
+  passwordResets      PasswordResetToken[]
 }
 
 model Customer {

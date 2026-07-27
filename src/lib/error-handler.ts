@@ -1,25 +1,30 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { AppError } from "@/lib/errors";
-import { getLogger } from "@/lib/logger";
 import type { ErrorResponse } from "@/lib/response";
 
 export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
-  const logger = getLogger();
-
-  if (error instanceof AppError) {
-    logger.warn({ code: error.code, statusCode: error.statusCode }, error.message);
+  // Check for AppError-like objects (duck-typing to handle
+  // Next.js module reloading where instanceof may fail).
+  if (
+    error instanceof AppError ||
+    (error != null &&
+      typeof error === "object" &&
+      "statusCode" in error &&
+      typeof (error as Record<string, unknown>).statusCode === "number")
+  ) {
+    const appErr = error as AppError;
 
     return NextResponse.json(
       {
         success: false as const,
         error: {
-          code: error.code,
-          message: error.message,
-          ...(error.details ? { details: error.details } : {}),
+          code: appErr.code,
+          message: appErr.message,
+          ...(appErr.details ? { details: appErr.details } : {}),
         },
       },
-      { status: error.statusCode },
+      { status: appErr.statusCode },
     );
   }
 
@@ -30,8 +35,6 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
       if (!details[path]) details[path] = [];
       details[path]!.push(issue.message);
     }
-
-    logger.warn({ details }, "Validation error");
 
     return NextResponse.json(
       {
@@ -47,8 +50,6 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
   }
 
   // Unknown errors
-  logger.error({ err: error }, "Unhandled error");
-
   return NextResponse.json(
     {
       success: false as const,

@@ -1,15 +1,36 @@
 import { prisma } from "@/lib/prisma";
 import { NotFoundError } from "@/lib/errors";
+import type { PrismaClient } from "@prisma/client";
+
+type PrismaModel = keyof Omit<
+  PrismaClient,
+  | "$connect"
+  | "$disconnect"
+  | "$on"
+  | "$transaction"
+  | "$use"
+  | "$extends"
+  | "$executeRaw"
+  | "$executeRawUnsafe"
+  | "$queryRaw"
+  | "$queryRawUnsafe"
+  | "$runCommandRaw"
+  | symbol
+>;
 
 /**
  * Base repository with common CRUD operations.
  * Each module extends this with domain-specific queries.
  */
 export class BaseRepository<T, CreateInput, UpdateInput> {
-  protected model: string;
+  protected model: PrismaModel;
 
-  constructor(modelName: string) {
+  constructor(modelName: PrismaModel) {
     this.model = modelName;
+  }
+
+  private delegate(): PrismaClient[PrismaModel] {
+    return prisma[this.model];
   }
 
   async findMany(params?: {
@@ -19,46 +40,46 @@ export class BaseRepository<T, CreateInput, UpdateInput> {
     orderBy?: Record<string, "asc" | "desc">;
     include?: Record<string, unknown>;
   }): Promise<T[]> {
-    return (prisma as any)[this.model].findMany(params ?? {}) as Promise<T[]>;
+    return this.delegate().findMany(params ?? {}) as unknown as Promise<T[]>;
   }
 
   async findById(
     id: string,
     include?: Record<string, unknown>,
   ): Promise<T | null> {
-    return (prisma as any)[this.model].findUnique({
+    return this.delegate().findUnique({
       where: { id },
       include,
-    }) as Promise<T | null>;
+    }) as unknown as Promise<T | null>;
   }
 
   async findByIdOrThrow(id: string, include?: Record<string, unknown>): Promise<T> {
     const record = await this.findById(id, include);
     if (!record) {
-      throw new NotFoundError(this.model, id);
+      throw new NotFoundError(String(this.model), id);
     }
     return record;
   }
 
   async create(data: CreateInput): Promise<T> {
-    return (prisma as any)[this.model].create({ data }) as Promise<T>;
+    return this.delegate().create({ data }) as unknown as Promise<T>;
   }
 
   async update(id: string, data: UpdateInput): Promise<T> {
-    return (prisma as any)[this.model].update({
+    return this.delegate().update({
       where: { id },
       data,
-    }) as Promise<T>;
+    }) as unknown as Promise<T>;
   }
 
   async delete(id: string): Promise<T> {
-    return (prisma as any)[this.model].update({
+    return this.delegate().update({
       where: { id },
       data: { deleted_at: new Date() },
-    }) as Promise<T>;
+    }) as unknown as Promise<T>;
   }
 
   async count(where?: Record<string, unknown>): Promise<number> {
-    return (prisma as any)[this.model].count({ where }) as Promise<number>;
+    return this.delegate().count({ where }) as unknown as Promise<number>;
   }
 }

@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Globe, Eye, EyeOff, Loader2 } from "lucide-react";
+import { saveAuth } from "@/lib/auth/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,11 +36,27 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    // Simulate login - will be replaced with real auth
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error?.message || "Giriş yapılırken bir hata oluştu");
+      }
+
+      const { data } = json;
+      saveAuth(data);
       router.push("/dashboard");
-    }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Giriş yapılırken bir hata oluştu");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -122,7 +139,7 @@ export default function LoginPage() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Şifre</Label>
                     <Link
-                      href="#"
+                      href="/forgot-password"
                       className="text-xs text-primary hover:underline"
                     >
                       Şifremi unuttum?

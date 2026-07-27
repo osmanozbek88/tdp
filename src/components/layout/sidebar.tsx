@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { clearAuth } from "@/lib/auth/client";
 
 const navItems = [
   { label: "Genel Bakış", href: "/dashboard", icon: LayoutDashboard },
@@ -33,7 +34,22 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+    } catch {
+      // silent
+    }
+    clearAuth();
+    router.push("/login");
+  }, [router]);
 
   return (
     <aside
@@ -101,16 +117,16 @@ export function Sidebar() {
         >
           {collapsed ? <ChevronRight className="h-5 w-5" /> : <><ChevronLeft className="h-5 w-5" /> Daralt</>}
         </Button>
-        <Link
-          href="/login"
+        <button
+          onClick={handleLogout}
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-destructive hover:bg-destructive/10",
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-destructive hover:bg-destructive/10 w-full",
             collapsed && "justify-center px-2",
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span>Çıkış Yap</span>}
-        </Link>
+        </button>
       </div>
     </aside>
   );
