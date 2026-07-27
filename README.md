@@ -145,7 +145,7 @@ Aktif provider `.env` dosyasında `PROVIDER_TYPE` ile belirlenir (`fake` veya `t
 
 ### 1. Bağımlılıkları yükle
 ```bash
-yarn install
+npm install
 ```
 
 ### 2. Ortam değişkenlerini ayarla
@@ -176,7 +176,7 @@ Tarayıcıdan `http://localhost:3005` adresine git.
 
 ### Docker ile PostgreSQL
 ```bash
-yarn docker:up             # PostgreSQL'i başlat
+npm run docker:up          # PostgreSQL'i başlat
 ```
 
 ---
