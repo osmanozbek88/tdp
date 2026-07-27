@@ -39,7 +39,17 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return <div className={cn("flex items-center justify-end gap-2 pt-4 border-t", className)} {...props} />
 }
 
-function DialogClose({ className, ...props }: React.ComponentProps<"button">) {
+function DialogClose({ className, variant = "icon", ...props }: React.ComponentProps<"button"> & { variant?: "icon" | "button" }) {
+  if (variant === "button") {
+    return (
+      <BaseDialog.Close
+        className={cn("inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground", className)}
+        {...props}
+      >
+        İptal
+      </BaseDialog.Close>
+    )
+  }
   return (
     <BaseDialog.Close
       className={cn("absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100", className)}

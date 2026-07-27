@@ -361,7 +361,7 @@ export default function OrganizationPage() {
           </div>
 
           <DialogFooter>
-            <BaseDialogCloseButton onClick={() => setModalOpen(false)} />
+            <DialogClose variant="button" onClick={() => setModalOpen(false)} />
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Kaydediliyor..." : "Kaydet"}
             </Button>
@@ -465,15 +465,6 @@ export default function OrganizationPage() {
 
     return null;
   }
-}
-
-// Need separate close button component since DialogClose is a base-ui component
-function BaseDialogCloseButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button variant="outline" onClick={onClick}>
-      İptal
-    </Button>
-  );
 }
 
 // ─── Table Components ───
