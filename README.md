@@ -1,8 +1,4 @@
 
-
-
-
-
 # TDP — Telekom Dağıtım Platformu (Telecom Distribution Platform)
 
 TDP, eSIM ve mobil veri ürünlerinin dağıtımını yönetmek için geliştirilmiş,
@@ -107,43 +103,41 @@ takip edecek şekilde ilişkilendirilmiştir.
 
 ---
 
-## Dashboard (FAZ 5)
+## Dashboard
 
-`GET /api/dashboard` endpoint'i ve `GET /dashboard` sayfası canlı veri sunar:
+`GET /api/dashboard` endpoint'i ve `/dashboard` sayfası ile anlık iş verisi sunar:
 
 | Widget | Veri Kaynağı |
 |--------|-------------|
-| Günlük / Aylık Satış | `Order.totalAmount`, `status = 'COMPLETED'` |
-| Sipariş Sayısı | `Order` count (bugün / bu ay) |
-| Bayi Sayısı | `Distributor` + `Dealer` + `SubDealer` toplamı |
-| Müşteri Sayısı | `Customer` count |
-| Son Siparişler | Son 15 sipariş (müşteri, ürün, tutar, durum) |
-| Provider Durumu | `ProviderStatus` tablosu (sağlık, gecikme, uptime %) |
-
-Provider sağlık kontrolü **30 saniyede bir** otomatik çalışır.
-Sayfa **30 saniyede bir auto-refresh** yapar.
+| Günlük / Aylık Satış | Tamamlanmış siparişler üzerinden anlık ciro |
+| Sipariş Sayısı | Günlük ve aylık sipariş adetleri |
+| Bayi Sayısı | Tüm dağıtım kanalı toplamı |
+| Müşteri Sayısı | Kayıtlı müşteri sayısı |
+| Son Siparişler | Son 15 sipariş detayı |
+| Provider Durumu | Operatör sağlık kontrolü (gecikme, uptime) |
 
 ---
 
-## Provider Katmanı (FAZ 4 — GSMA/Telna Uyumlu)
+## Provider Katmanı
 
-Provider soyutlama katmanı **Interface/Adapter/Factory** pattern'i ile tasarlanmıştır:
+Dış operatör entegrasyonu **Interface/Adapter/Factory** pattern'i ile soyutlanmıştır:
 
 ```
 Provider (interface)
  └── BaseProvider (abstract)
-      ├── FakeProvider     ← Geliştirme/test için (şu an aktif)
-      └── TelnaProvider    ← Gerçek entegrasyon (FAZ 14)
+      ├── FakeProvider     ← Geliştirme/test
+      └── TelnaProvider    ← Üretim
 ```
 
-FakeProvider'ın sundukları:
-- **GSMA state machine**: `RELEASED → DOWNLOADED → INSTALLED → ENABLED → DISABLED → DELETED`
-- **Luhn algoritması** ile geçerli ICCID/IMSI/EID/MSISDN üretimi
-- **SGP.22** formatında aktivasyon kodu işlemleri
-- **HMAC-SHA256** ile webhook imzalama
-- Subscriber yönetimi, billing stub, usage/CDR stub
+Desteklenen telekom standartları ve özellikler:
 
-Devre dışı bırakmak için: `.env` dosyasında `PROVIDER_TYPE=telna`
+- **GSMA state machine**: `RELEASED → DOWNLOADED → INSTALLED → ENABLED → DISABLED → DELETED`
+- **Luhn algoritması** ile ICCID/IMSI/EID/MSISDN doğrulama
+- **SGP.22** formatında eSIM aktivasyon kodu yönetimi
+- **HMAC-SHA256** ile webhook imzalama
+- Subscriber yönetimi, faturalama, kullanım/CDR kaydı
+
+Aktif provider `.env` dosyasında `PROVIDER_TYPE` ile belirlenir (`fake` veya `telna`).
 
 ---
 
@@ -197,37 +191,7 @@ yarn docker:up             # PostgreSQL'i başlat
 
 ---
 
-## Geliştirme Fazları
-
-| Faz | Durum | Açıklama |
-|-----|-------|----------|
-| Faz 1-3 | ✅ | Proje iskeleti, veritabanı şeması, auth sistemi, UI layout |
-| Faz 4 | ✅ | Provider soyutlama katmanı (GSMA/Telna uyumlu) |
-| Faz 5 | ✅ | Dashboard MVP (canlı veri, provider health check) |
-| Faz 6+ | 🔜 | Sipariş akışı, eSIM aktivasyonu, raporlama, Telna entegrasyonu |
-
----
-
-## Test
-
-Testler manuel olarak yürütülmektedir. Temel test noktaları:
-
-```bash
-# Provider plan listesi
-curl http://localhost:3005/api/provider
-
-# Dashboard istatistikleri (auth cookie gerekli)
-curl http://localhost:3005/api/dashboard -H "Authorization: Bearer <token>"
-
-# Sağlık kontrolü
-curl http://localhost:3005/api/health
-```
-
----
-
 ## Lisans
 
 Private — Tüm hakları saklıdır.
-
-
 
