@@ -72,7 +72,7 @@ interface PaginatedResult<T> {
   meta: { page: number; pageSize: number; total: number };
 }
 
-type Tab = "distributors" | "dealers" | "subDealers" | "employees" | "priceGroups";
+type Tab = "distributors" | "dealers" | "sub-dealers" | "employees" | "price-groups";
 
 // ─── Helpers ───
 
@@ -92,9 +92,9 @@ function statusBadge(active: boolean) {
 const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "distributors", label: "Distribütörler", icon: Building2 },
   { key: "dealers", label: "Bayiler", icon: Building },
-  { key: "subDealers", label: "Alt Bayiler", icon: Building },
+  { key: "sub-dealers", label: "Alt Bayiler", icon: Building },
   { key: "employees", label: "Personel", icon: Users },
-  { key: "priceGroups", label: "Fiyat Grupları", icon: Tag },
+  { key: "price-groups", label: "Fiyat Grupları", icon: Tag },
 ];
 
 // ─── Page ───
@@ -190,7 +190,7 @@ export default function OrganizationPage() {
             <DistributorTable data={data as DistributorRow[]} onToggle={toggleStatus} />
           ) : activeTab === "dealers" ? (
             <DealerTable data={data as DealerRow[]} onToggle={toggleStatus} />
-          ) : activeTab === "subDealers" ? (
+          ) : activeTab === "sub-dealers" ? (
             <SubDealerTable data={data as SubDealerRow[]} onToggle={toggleStatus} />
           ) : activeTab === "employees" ? (
             <EmployeeTable data={data as EmployeeRow[]} onToggle={toggleStatus} />
