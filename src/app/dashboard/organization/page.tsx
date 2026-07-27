@@ -384,8 +384,8 @@ export default function OrganizationPage() {
         </div>
         <div><Label>Adres</Label><Input value={df.address} onChange={e => setDf({...df, address: e.target.value})} /></div>
         <div className="grid grid-cols-3 gap-3">
-          <div><Label>Bakiye</Label><Input type="number" value={df.balance} onChange={e => setDf({...df, balance: Number(e.target.value)})} /></div>
-          <div><Label>Komisyon %</Label><Input type="number" value={df.commissionRate} onChange={e => setDf({...df, commissionRate: Number(e.target.value)})} /></div>
+          <div><Label>Bakiye</Label><Input type="number" value={df.balance} onChange={e => setDf({...df, balance: Number(e.target.value) || 0})} /></div>
+          <div><Label>Komisyon %</Label><Input type="number" value={df.commissionRate} onChange={e => setDf({...df, commissionRate: Number(e.target.value) || 0})} /></div>
           <div><Label>Fiyat Grubu</Label><Combobox options={priceGroups} value={df.priceGroupId} onChange={v => setDf({...df, priceGroupId: v})} placeholder="Seçiniz..." /></div>
         </div>
       </>
@@ -404,8 +404,8 @@ export default function OrganizationPage() {
         </div>
         <div><Label>Adres</Label><Input value={dlf.address} onChange={e => setDlf({...dlf, address: e.target.value})} /></div>
         <div className="grid grid-cols-3 gap-3">
-          <div><Label>Bakiye</Label><Input type="number" value={dlf.balance} onChange={e => setDlf({...dlf, balance: Number(e.target.value)})} /></div>
-          <div><Label>Komisyon %</Label><Input type="number" value={dlf.commissionRate} onChange={e => setDlf({...dlf, commissionRate: Number(e.target.value)})} /></div>
+          <div><Label>Bakiye</Label><Input type="number" value={dlf.balance} onChange={e => setDlf({...dlf, balance: Number(e.target.value) || 0})} /></div>
+          <div><Label>Komisyon %</Label><Input type="number" value={dlf.commissionRate} onChange={e => setDlf({...dlf, commissionRate: Number(e.target.value) || 0})} /></div>
           <div><Label>Fiyat Grubu</Label><Combobox options={priceGroups} value={dlf.priceGroupId} onChange={v => setDlf({...dlf, priceGroupId: v})} placeholder="Seçiniz..." /></div>
         </div>
       </>
@@ -427,8 +427,8 @@ export default function OrganizationPage() {
         </div>
         <div><Label>Adres</Label><Input value={sf.address} onChange={e => setSf({...sf, address: e.target.value})} /></div>
         <div className="grid grid-cols-3 gap-3">
-          <div><Label>Bakiye</Label><Input type="number" value={sf.balance} onChange={e => setSf({...sf, balance: Number(e.target.value)})} /></div>
-          <div><Label>Komisyon %</Label><Input type="number" value={sf.commissionRate} onChange={e => setSf({...sf, commissionRate: Number(e.target.value)})} /></div>
+          <div><Label>Bakiye</Label><Input type="number" value={sf.balance} onChange={e => setSf({...sf, balance: Number(e.target.value) || 0})} /></div>
+          <div><Label>Komisyon %</Label><Input type="number" value={sf.commissionRate} onChange={e => setSf({...sf, commissionRate: Number(e.target.value) || 0})} /></div>
           <div><Label>Fiyat Grubu</Label><Combobox options={priceGroups} value={sf.priceGroupId} onChange={v => setSf({...sf, priceGroupId: v})} placeholder="Seçiniz..." /></div>
         </div>
       </>
@@ -459,7 +459,7 @@ export default function OrganizationPage() {
     if (activeTab === "price-groups") return (
       <>
         <div><Label>İsim</Label><Input value={pf.name} onChange={e => setPf({...pf, name: e.target.value})} /></div>
-        <div><Label>Kar Marjı %</Label><Input type="number" value={pf.markupPercent} onChange={e => setPf({...pf, markupPercent: Number(e.target.value)})} /></div>
+        <div><Label>Kar Marjı %</Label><Input type="number" value={pf.markupPercent} onChange={e => setPf({...pf, markupPercent: Number(e.target.value) || 0})} /></div>
       </>
     );
 
