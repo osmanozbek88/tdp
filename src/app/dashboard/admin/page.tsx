@@ -44,7 +44,7 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/permissions");
+      const res = await fetch("/api/auth/permissions", { credentials: "include" });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? "Yüklenemedi");
 
@@ -90,6 +90,7 @@ export default function AdminPage() {
       const res = await fetch("/api/auth/permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           role,
           permissionId: permId,
@@ -129,7 +130,7 @@ export default function AdminPage() {
 
     // Lazily load all permissions
     try {
-      const res = await fetch("/api/auth/permissions");
+      const res = await fetch("/api/auth/permissions", { credentials: "include" });
       const json = await res.json();
       if (!json.success) return null;
 

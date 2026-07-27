@@ -5,6 +5,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
+let cachedSecret: Uint8Array | null = null;
+
+function getSecret(): Uint8Array {
+  if (!cachedSecret) {
+    const raw = process.env.AUTH_SECRET;
+    if (!raw || raw.length < 32) {
+      throw new Error("AUTH_SECRET is not set or too short (< 32 chars)");
+    }
+    cachedSecret = new TextEncoder().encode(raw);
+  }
+  return cachedSecret;
+}
+
 /**
  * Paths that do NOT require authentication.
  */
@@ -141,36 +154,32 @@ export async function middleware(req: NextRequest) {
     token = authHeader.slice(7);
   }
 
-  // For API routes, require Authorization header
-  if (pathname.startsWith("/api/") && !token) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "UNAUTHORIZED",
-          message: "Kimlik doğrulaması gerekli",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
-  // For page routes, also check cookies
+  // Fallback: also check cookies (for client-side fetch with credentials: 'include')
   if (!token) {
     token = req.cookies.get("accessToken")?.value;
   }
 
-  // For page routes without token, redirect to login
+  // No token → 401 for API, redirect for pages
   if (!token) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Kimlik doğrulaması gerekli",
+          },
+        },
+        { status: 401 },
+      );
+    }
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   try {
-    const secret = new TextEncoder().encode(
-      process.env.AUTH_SECRET ?? "change-me-to-a-random-string-at-least-32-chars",
-    );
+    const secret = getSecret();
     const { payload } = await jwtVerify(token, secret);
 
     const userRole = (payload.role as string) ?? "CUSTOMER";
