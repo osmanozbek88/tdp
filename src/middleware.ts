@@ -73,6 +73,8 @@ const ROLE_PROTECTED_PATHS: Array<{ prefix: string; rule: RoleRule }> = [
   // Admin panel → SUPER_ADMIN only
   { prefix: "/dashboard/admin", rule: { minLevel: ROLE_HIERARCHY.SUPER_ADMIN } },
   { prefix: "/api/admin", rule: { minLevel: ROLE_HIERARCHY.SUPER_ADMIN } },
+  // Permission management → SUPER_ADMIN only
+  { prefix: "/api/auth/permissions", rule: { minLevel: ROLE_HIERARCHY.SUPER_ADMIN } },
   // Tenant management → distributor+
   { prefix: "/dashboard/tenants", rule: { minLevel: ROLE_HIERARCHY.DISTRIBUTOR_ADMIN } },
   { prefix: "/api/tenants", rule: { minLevel: ROLE_HIERARCHY.DISTRIBUTOR_ADMIN } },

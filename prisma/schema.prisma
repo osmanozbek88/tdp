@@ -383,6 +383,30 @@ model WebhookLog {
   createdAt DateTime @default(now())
 }
 
+// ─── Permission ───
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique   // e.g., "Orders.Create", "Products.Edit"
+  description String?
+  group       String   // e.g., "Orders", "Products", "Users"
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  role         UserRole
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
 // ─── Audit Log ───
 
 model AuditLog {
