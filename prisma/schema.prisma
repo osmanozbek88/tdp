@@ -370,6 +370,17 @@ model UsageRecord {
   esim ESim @relation(fields: [esimId], references: [id])
 }
 
+// ─── Provider Health ───
+
+model ProviderStatus {
+  id              String   @id @default(cuid())
+  status          String   @default("healthy") // healthy, degraded, down
+  latencyMs       Int      @default(0)
+  uptimePercentage30d Decimal @default(99.99)
+  checkedAt       DateTime @default(now())
+  createdAt       DateTime @default(now())
+}
+
 // ─── Webhook Log ───
 
 model WebhookLog {

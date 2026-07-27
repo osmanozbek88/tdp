@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -14,232 +17,358 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import {
   DollarSign,
   ShoppingCart,
   Users,
-  Globe,
+  Building2,
+  HeartPulse,
   TrendingUp,
-  TrendingDown,
-  Activity,
+  RefreshCw,
 } from "lucide-react";
 
-const stats = [
-  {
-    title: "Toplam Gelir",
-    value: "$48,250",
-    change: "+%12.5",
-    trend: "up",
-    icon: DollarSign,
-    description: "geçen aya göre",
-  },
-  {
-    title: "Aktif Siparişler",
-    value: "156",
-    change: "+%8.2",
-    trend: "up",
-    icon: ShoppingCart,
-    description: "geçen aya göre",
-  },
-  {
-    title: "Toplam Müşteri",
-    value: "2,847",
-    change: "+%3.1",
-    trend: "up",
-    icon: Users,
-    description: "geçen aya göre",
-  },
-  {
-    title: "Aktif Edilen eSIM",
-    value: "1,423",
-    change: "-%2.4",
-    trend: "down",
-    icon: Globe,
-    description: "geçen aya göre",
-  },
-];
+// ─── Types ───
 
-const recentOrders = [
-  { id: "#ORD-001", customer: "John Smith", product: "eSIM - USA 5GB", amount: "$24.99", status: "completed" as const, date: "2026-07-22" },
-  { id: "#ORD-002", customer: "Sarah Johnson", product: "Data Bundle - UK 10GB", amount: "$39.99", status: "processing" as const, date: "2026-07-22" },
-  { id: "#ORD-003", customer: "Mike Chen", product: "eSIM - Japan 3GB", amount: "$19.99", status: "pending" as const, date: "2026-07-21" },
-  { id: "#ORD-004", customer: "Emily Davis", product: "Top-Up - France 5GB", amount: "$14.99", status: "completed" as const, date: "2026-07-21" },
-  { id: "#ORD-005", customer: "Alex Wilson", product: "eSIM - Global 1GB", amount: "$9.99", status: "processing" as const, date: "2026-07-20" },
-];
+interface DashboardData {
+  sales: { daily: number; monthly: number; currency: string };
+  orderCount: { today: number; thisMonth: number };
+  accounts: { distributors: number; customers: number };
+  recentOrders: RecentOrder[];
+  providerHealth: ProviderHealth | null;
+}
 
-const topProducts = [
-  { name: "eSIM - USA 5GB", revenue: "$12,450", units: 498, growth: "+15%" },
-  { name: "Data Bundle - UK 10GB", revenue: "$8,920", units: 223, growth: "+8%" },
-  { name: "eSIM - Japan 3GB", revenue: "$6,380", units: 319, growth: "+22%" },
-  { name: "eSIM - Global 1GB", revenue: "$4,950", units: 495, growth: "+5%" },
-  { name: "Top-Up - France 5GB", revenue: "$3,720", units: 248, growth: "+12%" },
-];
+interface RecentOrder {
+  orderId: string;
+  customerName: string;
+  customerEmail: string;
+  productName: string;
+  totalAmount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+}
 
-const statusVariant = {
-  completed: "default" as const,
-  processing: "secondary" as const,
-  pending: "outline" as const,
+interface ProviderHealth {
+  status: "healthy" | "degraded" | "down";
+  latencyMs: number;
+  uptimePercentage30d: number;
+  lastCheckedAt: string;
+}
+
+// ─── Helpers ───
+
+function formatCurrency(amount: number, currency = "USD"): string {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
+const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  COMPLETED: "default",
+  PROCESSING: "secondary",
+  PENDING: "outline",
+  PAID: "default",
+  CANCELLED: "destructive",
+  FAILED: "destructive",
+  REFUNDED: "outline",
 };
 
+const statusLabel: Record<string, string> = {
+  COMPLETED: "Tamamlandı",
+  PROCESSING: "İşleniyor",
+  PENDING: "Bekliyor",
+  PAID: "Ödendi",
+  CANCELLED: "İptal",
+  FAILED: "Başarısız",
+  REFUNDED: "İade",
+};
+
+function getProviderBadge(health: ProviderHealth | null): {
+  label: string;
+  className: string;
+} {
+  if (!health) return { label: "Bekleniyor", className: "bg-muted text-muted-foreground" };
+  switch (health.status) {
+    case "healthy":
+      return { label: "Sağlıklı", className: "bg-emerald-100 text-emerald-700" };
+    case "degraded":
+      return { label: "Yavaş", className: "bg-amber-100 text-amber-700" };
+    case "down":
+      return { label: "Kapalı", className: "bg-red-100 text-red-700" };
+  }
+}
+
+// ─── Component ───
+
 export default function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard", { credentials: "include" });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "Veri alınamadı");
+      setData(json.data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Bağlantı hatası");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchData, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  if (loading) return <DashboardSkeleton />;
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight">Genel Bakış</h1>
+        <Card className="border-destructive/50">
+          <CardContent className="py-8 text-center">
+            <p className="text-destructive font-medium mb-2">Veri yüklenemedi</p>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={() => { setLoading(true); fetchData(); }}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <RefreshCw className="h-4 w-4" /> Tekrar Dene
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const providerBadge = getProviderBadge(data.providerHealth);
+
   return (
     <div className="space-y-6">
-      {/* Page title */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Genel Bakış</h1>
-        <p className="text-muted-foreground mt-1">
-          Hoş geldiniz! Platformunuzun bugünkü durumu aşağıda özetlenmiştir.
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Genel Bakış</h1>
+          <p className="text-muted-foreground mt-1">
+            Platformunuzun anlık durumu — veriler 30 saniyede bir yenilenir
+          </p>
+        </div>
+        <button
+          onClick={() => { setLoading(true); fetchData(); }}
+          className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          <RefreshCw className="h-4 w-4" /> Yenile
+        </button>
       </div>
 
-      {/* Stats cards */}
+      {/* Row 1: Financial KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center gap-1 mt-1">
-                  {stat.trend === "up" ? (
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                  )}
-                  <span
-                    className={`text-sm font-medium ${
-                      stat.trend === "up" ? "text-emerald-500" : "text-red-500"
-                    }`}
-                  >
-                    {stat.change}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-1">
-                    {stat.description}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Two column layout */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Orders */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Son Siparişler</CardTitle>
-            <CardDescription>Tüm kanallardan en son siparişler</CardDescription>
+        <StatCard
+          title="Günlük Satış"
+          value={formatCurrency(data.sales.daily)}
+          icon={DollarSign}
+          subtitle={data.sales.daily > 0 ? "Bugün" : "Henüz sipariş yok"}
+        />
+        <StatCard
+          title="Aylık Satış"
+          value={formatCurrency(data.sales.monthly)}
+          icon={TrendingUp}
+          subtitle="Bu ay"
+        />
+        <StatCard
+          title="Sipariş Sayısı"
+          value={String(data.orderCount.today)}
+          icon={ShoppingCart}
+          subtitle={`${data.orderCount.thisMonth} bu ay`}
+        />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Provider Durumu
+            </CardTitle>
+            <HeartPulse className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${providerBadge.className}`}>
+                {providerBadge.label}
+              </span>
+            </div>
+            {data.providerHealth && (
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <div>Gecikme: {data.providerHealth.latencyMs} ms</div>
+                <div>Son 30 gün: %{data.providerHealth.uptimePercentage30d.toFixed(1)}</div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 2: Account KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Bayi Sayısı"
+          value={String(data.accounts.distributors)}
+          icon={Building2}
+          subtitle="Distribütör + Bayi + Alt Bayi"
+        />
+        <StatCard
+          title="Müşteri Sayısı"
+          value={String(data.accounts.customers)}
+          icon={Users}
+          subtitle="Toplam kayıtlı müşteri"
+        />
+        <StatCard
+          title="Bugünkü Gelir"
+          value={formatCurrency(data.sales.daily)}
+          icon={DollarSign}
+          subtitle="Completed siparişler"
+        />
+        <StatCard
+          title="Aylık Gelir"
+          value={formatCurrency(data.sales.monthly)}
+          icon={TrendingUp}
+          subtitle="Completed siparişler"
+        />
+      </div>
+
+      {/* Recent Orders — full width */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Son Siparişler</CardTitle>
+          <CardDescription>En son 15 sipariş</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.recentOrders.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Henüz hiç sipariş yok
+            </p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sipariş</TableHead>
+                  <TableHead>Sipariş No</TableHead>
                   <TableHead>Müşteri</TableHead>
                   <TableHead>Ürün</TableHead>
                   <TableHead>Tutar</TableHead>
                   <TableHead>Durum</TableHead>
+                  <TableHead className="text-right">Tarih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell className="max-w-[140px] truncate">{order.product}</TableCell>
-                    <TableCell>{order.amount}</TableCell>
+                {data.recentOrders.map((order) => (
+                  <TableRow key={order.orderId}>
+                    <TableCell className="font-medium">{order.orderId}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant[order.status]}>
-                        {order.status}
+                      <div>{order.customerName}</div>
+                      <div className="text-xs text-muted-foreground">{order.customerEmail}</div>
+                    </TableCell>
+                    <TableCell className="max-w-[180px] truncate">{order.productName}</TableCell>
+                    <TableCell>{formatCurrency(order.totalAmount, order.currency)}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[order.status] ?? "outline"}>
+                        {statusLabel[order.status] ?? order.status}
                       </Badge>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Top Products */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>En Çok Satanlar</CardTitle>
-            <CardDescription>Bu ayın en çok satan ürünleri</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ürün</TableHead>
-                  <TableHead>Gelir</TableHead>
-                  <TableHead>Adet</TableHead>
-                  <TableHead>Büyüme</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topProducts.map((product) => (
-                  <TableRow key={product.name}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.revenue}</TableCell>
-                    <TableCell>{product.units}</TableCell>
-                    <TableCell>
-                      <span className="text-emerald-500 font-medium">{product.growth}</span>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleString("tr-TR")}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-      {/* Activity summary */}
+// ─── Sub-components ───
+
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+}: {
+  title: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subtitle: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="h-9 w-48 animate-pulse rounded-md bg-muted" />
+        <div className="h-5 w-96 mt-2 animate-pulse rounded-md bg-muted" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-28 animate-pulse rounded bg-muted mb-2" />
+              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i + 4}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-28 animate-pulse rounded bg-muted mb-2" />
+              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Platform Aktivitesi</CardTitle>
-          </div>
-          <CardDescription>
-            Telekom dağıtım platformunuzun gerçek zamanlı özeti
-          </CardDescription>
+          <div className="h-6 w-40 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded bg-muted mt-1" />
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Bugünkü Siparişler</p>
-              <p className="text-2xl font-bold mt-1">24</p>
-              <div className="flex items-center gap-1 mt-1">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm text-emerald-500 font-medium">+%18</span>
-              </div>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Bugünkü Gelir</p>
-              <p className="text-2xl font-bold mt-1">$1,847</p>
-              <div className="flex items-center gap-1 mt-1">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm text-emerald-500 font-medium">+%7</span>
-              </div>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Aktif eSIM</p>
-              <p className="text-2xl font-bold mt-1">892</p>
-              <div className="flex items-center gap-1 mt-1">
-                <TrendingDown className="h-4 w-4 text-red-500" />
-                <span className="text-sm text-red-500 font-medium">-%3</span>
-              </div>
-            </div>
-          </div>
+          <div className="h-64 w-full animate-pulse rounded bg-muted" />
         </CardContent>
       </Card>
     </div>

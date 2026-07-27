@@ -7,8 +7,10 @@ import { getEnv } from "@/config/env";
 import type { Provider } from "./provider-interface";
 import { FakeProvider } from "./fake-provider";
 import type { WebhookCallback } from "./fake-provider";
+import { startProviderHealthChecks } from "./health-check";
 
 let cachedProvider: Provider | null = null;
+let healthCheckStarted = false;
 
 /**
  * Get the active provider instance based on PROVIDER_TYPE env var.
@@ -18,6 +20,7 @@ let cachedProvider: Provider | null = null;
  *   - "telna" → TelnaProvider (not yet implemented)
  *
  * The provider is a singleton — created once and reused.
+ * Starts provider health checks on first call.
  */
 export async function getActiveProvider(
   webhookCallback?: WebhookCallback,
@@ -31,7 +34,7 @@ export async function getActiveProvider(
     case "fake": {
       const provider = new FakeProvider(webhookCallback);
       cachedProvider = provider;
-      return provider;
+      break;
     }
 
     case "telna":
@@ -42,6 +45,14 @@ export async function getActiveProvider(
         `Bilinmeyen PROVIDER_TYPE: ${type}. "fake" veya "telna" olmalıdır.`,
       );
   }
+
+  // Start health checks once on first provider init
+  if (!healthCheckStarted) {
+    healthCheckStarted = true;
+    startProviderHealthChecks();
+  }
+
+  return cachedProvider!;
 }
 
 /**

@@ -23,6 +23,9 @@ export * from "./errors";
 // Factory
 export { getActiveProvider, resetProvider, setProvider } from "./factory";
 
+// Health check
+export { startProviderHealthChecks, stopProviderHealthChecks } from "./health-check";
+
 
 
 
