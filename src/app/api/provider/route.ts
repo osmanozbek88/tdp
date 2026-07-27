@@ -7,31 +7,34 @@ import { getActiveProvider } from "@/lib/provider";
  *
  * Döndürür:
  *   - Provider tipi (fake / telna)
- *   - Bağlantı durumu (connectivity check)
- *   - Ürün sayısı, ülke sayısı
+ *   - Plan ve ülke sayısı
+ *   - Örnek plan listesi (ilk 5)
  */
 export async function GET(): Promise<NextResponse> {
   try {
     const provider = await getActiveProvider();
-    const [products, countries] = await Promise.all([
-      provider.fetchProducts(),
+    const [plans, countries] = await Promise.all([
+      provider.fetchPlans(),
       provider.fetchCountries(),
     ]);
 
     return NextResponse.json({
       success: true,
       provider: provider.name,
-      productsCount: products.length,
+      plansCount: plans.length,
       countriesCount: countries.length,
       countries: countries.map((c) => ({ code: c.code, name: c.name })),
-      products: products.slice(0, 5).map((p) => ({
-        id: p.id,
+      plans: plans.slice(0, 5).map((p) => ({
+        planId: p.planId,
         name: p.name,
-        country: p.country,
-        price: p.price,
+        countryCoverage: p.countryCoverage,
+        retailPrice: p.retailPrice,
         currency: p.currency,
+        dataLimitMB: p.dataLimitMB,
+        validityDays: p.validityDays,
+        planType: p.planType,
       })),
-      _note: products.length > 5 ? `${products.length - 5} ürün daha var (ilk 5 gösteriliyor)` : undefined,
+      _note: plans.length > 5 ? `${plans.length - 5} plan daha var (ilk 5 gösteriliyor)` : undefined,
     });
   } catch (error) {
     return NextResponse.json(

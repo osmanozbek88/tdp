@@ -4,14 +4,17 @@
 
 
 import type {
-  ProviderProduct,
+  ProviderPlan,
   ProviderOrderRequest,
   ProviderOrderResult,
-  ProviderEsimDetails,
+  ProviderEsimProfile,
   ProviderEsimActivation,
   ProviderUsageRecord,
   ProviderUsageSummary,
   ProviderCountry,
+  ProviderSubscriber,
+  CreateSubscriberRequest,
+  ProviderBillingRecord,
   ProviderWebhookPayload,
 } from "./types";
 
@@ -27,14 +30,25 @@ export interface Provider {
 
   // ─── Product / Catalog ───
 
-  /** Fetch the full product catalogue from the provider. */
-  fetchProducts(): Promise<ProviderProduct[]>;
+  /** Fetch the full plan catalogue from the provider. */
+  fetchPlans(): Promise<ProviderPlan[]>;
 
   /** Fetch supported countries with regions. */
   fetchCountries(): Promise<ProviderCountry[]>;
 
   /** Fetch supported regions for a country. */
   fetchRegions(countryCode: string): Promise<ProviderCountry["regions"]>;
+
+  // ─── Subscriber / Account ───
+
+  /** Register a new subscriber account with the provider. */
+  createSubscriber(request: CreateSubscriberRequest): Promise<ProviderSubscriber>;
+
+  /** Retrieve a subscriber by account ID. */
+  getSubscriber(accountId: string): Promise<ProviderSubscriber>;
+
+  /** Update subscriber status. */
+  updateSubscriberStatus(accountId: string, status: ProviderSubscriber["status"]): Promise<ProviderSubscriber>;
 
   // ─── Orders ───
 
@@ -44,32 +58,32 @@ export interface Provider {
   /** Query the current status of an order. */
   getOrderStatus(providerOrderId: string): Promise<ProviderOrderResult>;
 
-  /** Cancel a pending or processing order. */
+  /** Cancel a pending or provisioning order. */
   cancelOrder(providerOrderId: string): Promise<ProviderOrderResult>;
 
-  // ─── eSIM Lifecycle ───
+  // ─── eSIM Lifecycle (GSMA SGP.02 / SGP.22) ───
 
-  /** Activate an eSIM (returns QR code and activation code). */
+  /** Get full eSIM profile details by ICCID. */
+  getEsimProfile(iccid: string): Promise<ProviderEsimProfile>;
+
+  /** Activate an eSIM — transition released → downloaded. */
   activateEsim(iccid: string): Promise<ProviderEsimActivation>;
-
-  /** Get full details for an eSIM by ICCID. */
-  getEsimDetails(iccid: string): Promise<ProviderEsimDetails>;
 
   /** Get the QR code URL as a string. */
   getQrCode(iccid: string): Promise<string>;
 
-  /** Suspend an eSIM. */
-  suspendEsim(iccid: string): Promise<ProviderEsimDetails>;
+  /** Disable (suspend) an active eSIM. */
+  disableEsim(iccid: string): Promise<ProviderEsimProfile>;
 
-  /** Reactivate a suspended eSIM. */
-  reactivateEsim(iccid: string): Promise<ProviderEsimDetails>;
+  /** Re‑enable a disabled eSIM. */
+  enableEsim(iccid: string): Promise<ProviderEsimProfile>;
 
-  /** Terminate an eSIM. */
-  terminateEsim(iccid: string): Promise<ProviderEsimDetails>;
+  /** Permanently delete an eSIM profile. */
+  deleteEsim(iccid: string): Promise<ProviderEsimProfile>;
 
   // ─── Usage ───
 
-  /** Get detailed usage records for an eSIM in a date range. */
+  /** Get detailed usage / CDR records for an eSIM in a date range. */
   getUsageRecords(
     iccid: string,
     from: string,
@@ -83,9 +97,18 @@ export interface Provider {
     periodEnd?: string,
   ): Promise<ProviderUsageSummary>;
 
+  // ─── Billing ───
+
+  /** Get billing / invoice records for a subscriber. */
+  getBillingRecords(
+    accountId: string,
+    periodStart?: string,
+    periodEnd?: string,
+  ): Promise<ProviderBillingRecord[]>;
+
   // ─── Webhooks ───
 
-  /** Process an incoming webhook event from the provider. */
+  /** Process an incoming provider webhook. */
   handleWebhook(payload: ProviderWebhookPayload): Promise<void>;
 }
 

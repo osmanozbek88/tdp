@@ -75,12 +75,15 @@ export class ProviderProductNotFoundError extends ProviderError {
       provider,
       404,
       "PROVIDER_PRODUCT_NOT_FOUND",
-      `Ürün bulunamadı: ${productId}`,
+      `Plan bulunamadı: ${productId}`,
       "PRODUCT_NOT_FOUND",
     );
     this.name = "ProviderProductNotFoundError";
   }
 }
+
+/** @deprecated Use ProviderProductNotFoundError. */
+export const ProviderPlanNotFoundError = ProviderProductNotFoundError;
 
 export class ProviderOrderNotFoundError extends ProviderError {
   constructor(provider: string, orderId: string) {
@@ -105,6 +108,19 @@ export class ProviderEsimNotFoundError extends ProviderError {
       "ESIM_NOT_FOUND",
     );
     this.name = "ProviderEsimNotFoundError";
+  }
+}
+
+export class ProviderSubscriberNotFoundError extends ProviderError {
+  constructor(provider: string, accountId: string) {
+    super(
+      provider,
+      404,
+      "PROVIDER_SUBSCRIBER_NOT_FOUND",
+      `Abone bulunamadı: ${accountId}`,
+      "SUBSCRIBER_NOT_FOUND",
+    );
+    this.name = "ProviderSubscriberNotFoundError";
   }
 }
 

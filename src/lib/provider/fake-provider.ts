@@ -8,55 +8,71 @@
 
 
 import { BaseProvider } from "./base-provider";
-import { generateFakeIccid } from "./dto";
+import {
+  generateFakeIccid,
+  generateFakeEid,
+  generateFakeImsi,
+  generateFakeMsisdn,
+  buildActivationCode,
+  isValidIccid,
+} from "./dto";
 import type {
-  ProviderProduct,
+  ProviderPlan,
   ProviderCountry,
   ProviderOrderRequest,
   ProviderOrderResult,
   ProviderOrderItem,
-  ProviderEsimDetails,
+  ProviderEsimProfile,
   ProviderEsimActivation,
   ProviderUsageRecord,
   ProviderUsageSummary,
+  ProviderSubscriber,
+  CreateSubscriberRequest,
+  ProviderBillingRecord,
   ProviderWebhookPayload,
+  ProviderWebhookEnvelope,
   OrderStatus,
-  EsimStatus,
+  GsmEsimStatus,
+  SubscriberStatus,
+  UsageRecordType,
+  PlanType,
 } from "./types";
 import {
   ProviderProductNotFoundError,
   ProviderOrderNotFoundError,
   ProviderEsimNotFoundError,
   ProviderWebhookError,
+  ProviderValidationError,
 } from "./errors";
 
-// ─── In-memory storage ───
+// ═══════════════════════════════════════════════════════════════
+// Internal (in‑memory) data structures
+// ═══════════════════════════════════════════════════════════════
 
-interface FakeOrder {
-  providerOrderId: string;
-  status: OrderStatus;
-  items: FakeOrderItem[];
+interface FakeSubscriber {
+  accountId: string;
+  externalRef: string;
+  email: string;
+  countryCode: string;
+  status: SubscriberStatus;
   createdAt: string;
-}
-
-interface FakeOrderItem {
-  providerItemId: string;
-  iccid: string;
-  status: OrderStatus;
-  activationCode: string;
-  qrCodeUrl: string;
-  smdpAddress: string;
+  updatedAt: string;
 }
 
 interface FakeEsim {
   iccid: string;
-  status: EsimStatus;
+  eid: string | null;       // Bound eUICC identity, null until device binds
   imsi: string;
   msisdn: string | null;
   activationCode: string;
   qrCodeUrl: string;
   smdpAddress: string;
-  productName: string;
+  matchingId: string;
+  profileStatus: GsmEsimStatus;
+  apn: string | null;
+  planId: string | null;
+  orderId: string | null;
+  subscriberId: string | null;
   dataTotalMB: number;
   dataUsedMB: number;
   voiceTotalMinutes: number;
@@ -64,85 +80,135 @@ interface FakeEsim {
   smsTotal: number;
   smsUsed: number;
   createdAt: string;
-  activatedAt: string | null;
-  expiresAt: string | null;
+  updatedAt: string;
   periodStart: string;
   periodEnd: string;
 }
 
-// ─── Webhook callback (set by the app to persist status changes) ───
+interface FakeOrder {
+  orderId: string;
+  subscriberId: string | null;
+  planId: string;
+  status: OrderStatus;
+  quantity: number;
+  items: FakeOrderItem[];
+  createdAt: string;
+  activatedAt: string | null;
+}
+
+interface FakeOrderItem {
+  itemId: string;
+  iccid: string | null;
+  eid: string | null;
+  status: OrderStatus;
+  qrCodeUrl: string | null;
+  activationCode: string | null;
+  smdpAddress: string | null;
+  matchingId: string | null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Webhook
+// ═══════════════════════════════════════════════════════════════
 
 export type WebhookCallback = (
   eventType: string,
   data: Record<string, unknown>,
 ) => Promise<void>;
 
-// ─── Fake Product Catalogue ───
+// ═══════════════════════════════════════════════════════════════
+// Fake Product Catalogue (ProviderPlan formatinde)
+// ═══════════════════════════════════════════════════════════════
 
-const FAKE_PRODUCTS: ProviderProduct[] = [
+const FAKE_PLANS: ProviderPlan[] = [
   // Turkey
-  { id: "fake-tr-1gb-7d",  name: "Türkiye 1GB 7 Gün",   description: "Türkiye için 1GB eSIM paketi",     type: "ESIM", country: "TR", region: null,  currency: "USD", price: 4.99,  costPrice: 2.50,  dataAmountMB: 1024,  durationDays: 7,  specifications: { networkType: "4G", tethering: true } },
-  { id: "fake-tr-3gb-15d", name: "Türkiye 3GB 15 Gün",  description: "Türkiye için 3GB eSIM paketi",     type: "ESIM", country: "TR", region: null,  currency: "USD", price: 9.99,  costPrice: 5.00,  dataAmountMB: 3072,  durationDays: 15, specifications: { networkType: "4G", tethering: true } },
-  { id: "fake-tr-5gb-30d", name: "Türkiye 5GB 30 Gün",  description: "Türkiye için 5GB eSIM paketi",     type: "ESIM", country: "TR", region: null,  currency: "USD", price: 14.99, costPrice: 7.50,  dataAmountMB: 5120,  durationDays: 30, specifications: { networkType: "5G", tethering: true } },
-  { id: "fake-tr-10gb-30d",name: "Türkiye 10GB 30 Gün", description: "Türkiye için 10GB eSIM paketi",    type: "ESIM", country: "TR", region: null,  currency: "USD", price: 24.99, costPrice: 12.50, dataAmountMB: 10240, durationDays: 30, specifications: { networkType: "5G", tethering: true } },
-  { id: "fake-tr-unl-30d", name: "Türkiye Sınırsız 30 Gün", description: "Türkiye sınırsız data paketi", type: "ESIM", country: "TR", region: null,  currency: "USD", price: 39.99, costPrice: 20.00, dataAmountMB: null,   durationDays: 30, specifications: { networkType: "5G", throttling: "50GB sonrası 1Mbps", tethering: true } },
+  { planId: "fake-tr-1gb-7d",   name: "Türkiye 1GB 7 Gün",    countryCoverage: ["TR"], currency: "USD", retailPrice: 4.99,  wholesalePrice: 2.50,  dataLimitMB: 1024,  validityDays: 7,  planType: "data_only", apn: "internet",      throttling: null,                tethering: true },
+  { planId: "fake-tr-3gb-15d",  name: "Türkiye 3GB 15 Gün",   countryCoverage: ["TR"], currency: "USD", retailPrice: 9.99,  wholesalePrice: 5.00,  dataLimitMB: 3072,  validityDays: 15, planType: "data_only", apn: "internet",      throttling: null,                tethering: true },
+  { planId: "fake-tr-5gb-30d",  name: "Türkiye 5GB 30 Gün",   countryCoverage: ["TR"], currency: "USD", retailPrice: 14.99, wholesalePrice: 7.50,  dataLimitMB: 5120,  validityDays: 30, planType: "data_only", apn: "internet",      throttling: null,                tethering: true },
+  { planId: "fake-tr-10gb-30d", name: "Türkiye 10GB 30 Gün",  countryCoverage: ["TR"], currency: "USD", retailPrice: 24.99, wholesalePrice: 12.50, dataLimitMB: 10240, validityDays: 30, planType: "data_only", apn: "internet",      throttling: null,                tethering: true },
+  { planId: "fake-tr-unl-30d",  name: "Türkiye Sınırsız 30 Gün", countryCoverage: ["TR"], currency: "USD", retailPrice: 39.99, wholesalePrice: 20.00, dataLimitMB: null,   validityDays: 30, planType: "data_only", apn: "internet",      throttling: "50GB sonrası 1Mbps", tethering: true },
 
   // USA
-  { id: "fake-us-3gb-15d", name: "USA 3GB 15 Days",  description: "USA eSIM with 3GB data",      type: "ESIM", country: "US", region: null, currency: "USD", price: 12.99, costPrice: 6.00,  dataAmountMB: 3072,  durationDays: 15, specifications: { networkType: "5G", tethering: true } },
-  { id: "fake-us-10gb-30d",name: "USA 10GB 30 Days", description: "USA eSIM with 10GB data",     type: "ESIM", country: "US", region: null, currency: "USD", price: 29.99, costPrice: 15.00, dataAmountMB: 10240, durationDays: 30, specifications: { networkType: "5G", tethering: true } },
+  { planId: "fake-us-3gb-15d",  name: "USA 3GB 15 Days",      countryCoverage: ["US"], currency: "USD", retailPrice: 12.99, wholesalePrice: 6.00,  dataLimitMB: 3072,  validityDays: 15, planType: "data_only", apn: "fast.t-mobile.com", throttling: null,     tethering: true },
+  { planId: "fake-us-10gb-30d", name: "USA 10GB 30 Days",     countryCoverage: ["US"], currency: "USD", retailPrice: 29.99, wholesalePrice: 15.00, dataLimitMB: 10240, validityDays: 30, planType: "data_only", apn: "fast.t-mobile.com", throttling: null,     tethering: true },
 
   // UK
-  { id: "fake-gb-3gb-15d", name: "UK 3GB 15 Days",  description: "UK eSIM with 3GB data",     type: "ESIM", country: "GB", region: null, currency: "USD", price: 11.99, costPrice: 5.50,  dataAmountMB: 3072,  durationDays: 15, specifications: { networkType: "4G", tethering: true } },
-  { id: "fake-gb-10gb-30d",name: "UK 10GB 30 Days", description: "UK eSIM with 10GB data",   type: "ESIM", country: "GB", region: null, currency: "USD", price: 26.99, costPrice: 13.00, dataAmountMB: 10240, durationDays: 30, specifications: { networkType: "5G", tethering: true } },
+  { planId: "fake-gb-3gb-15d",  name: "UK 3GB 15 Days",       countryCoverage: ["GB"], currency: "USD", retailPrice: 11.99, wholesalePrice: 5.50,  dataLimitMB: 3072,  validityDays: 15, planType: "data_only", apn: "data.o2.co.uk", throttling: null,        tethering: true },
+  { planId: "fake-gb-10gb-30d", name: "UK 10GB 30 Days",      countryCoverage: ["GB"], currency: "USD", retailPrice: 26.99, wholesalePrice: 13.00, dataLimitMB: 10240, validityDays: 30, planType: "data_only", apn: "data.o2.co.uk", throttling: null,        tethering: true },
 
   // UAE
-  { id: "fake-ae-1gb-7d",  name: "UAE 1GB 7 Days",  description: "BAE için 1GB eSIM paketi", type: "ESIM", country: "AE", region: null,  currency: "USD", price: 6.99,  costPrice: 3.00,  dataAmountMB: 1024,  durationDays: 7,  specifications: { networkType: "5G", tethering: true } },
-  { id: "fake-ae-5gb-30d", name: "UAE 5GB 30 Days", description: "BAE için 5GB eSIM paketi", type: "ESIM", country: "AE", region: null,  currency: "USD", price: 18.99, costPrice: 9.00,  dataAmountMB: 5120,  durationDays: 30, specifications: { networkType: "5G", tethering: true } },
+  { planId: "fake-ae-1gb-7d",   name: "UAE 1GB 7 Days",       countryCoverage: ["AE"], currency: "USD", retailPrice: 6.99,  wholesalePrice: 3.00,  dataLimitMB: 1024,  validityDays: 7,  planType: "data_only", apn: "du",             throttling: null,     tethering: true },
+  { planId: "fake-ae-5gb-30d",  name: "UAE 5GB 30 Days",      countryCoverage: ["AE"], currency: "USD", retailPrice: 18.99, wholesalePrice: 9.00,  dataLimitMB: 5120,  validityDays: 30, planType: "data_only", apn: "du",             throttling: null,     tethering: true },
 
   // Germany
-  { id: "fake-de-3gb-15d", name: "Germany 3GB 15 Days", description: "Almanya 3GB eSIM", type: "ESIM", country: "DE", region: null, currency: "USD", price: 10.99, costPrice: 5.00, dataAmountMB: 3072, durationDays: 15, specifications: { networkType: "4G", tethering: true } },
+  { planId: "fake-de-3gb-15d",  name: "Germany 3GB 15 Days",  countryCoverage: ["DE"], currency: "USD", retailPrice: 10.99, wholesalePrice: 5.00,  dataLimitMB: 3072,  validityDays: 15, planType: "data_only", apn: "internet.t-mobile.de", throttling: null, tethering: true },
 
-  // Global / Multi-country
-  { id: "fake-glb-5gb-30d", name: "Global 5GB 30 Days", description: "50+ ülkede geçerli eSIM", type: "ESIM", country: "GLOBAL", region: null, currency: "USD", price: 34.99, costPrice: 17.50, dataAmountMB: 5120, durationDays: 30, specifications: { networkType: "4G", coverage: ["TR","US","GB","AE","DE","FR","IT","ES","JP"], tethering: true } },
+  // Global
+  { planId: "fake-glb-5gb-30d", name: "Global 5GB 30 Days",   countryCoverage: ["TR","US","GB","AE","DE","FR","IT","ES","JP"], currency: "USD", retailPrice: 34.99, wholesalePrice: 17.50, dataLimitMB: 5120, validityDays: 30, planType: "data_only", apn: "globaldata", throttling: null, tethering: true },
 ];
 
 const FAKE_COUNTRIES: ProviderCountry[] = [
-  { code: "TR", name: "Türkiye",   flag: "🇹🇷", regions: [{ code: "TR-IST", name: "İstanbul" }, { code: "TR-ANK", name: "Ankara" }] },
+  { code: "TR", name: "Türkiye",   flag: "🇹🇷", regions: [{ code: "TR-IST", name: "İstanbul" }, { code: "TR-ANK", name: "Ankara" }, { code: "TR-ANT", name: "Antalya" }] },
   { code: "US", name: "ABD",       flag: "🇺🇸", regions: [] },
   { code: "GB", name: "Birleşik Krallık", flag: "🇬🇧", regions: [] },
   { code: "AE", name: "BAE",       flag: "🇦🇪", regions: [{ code: "AE-DXB", name: "Dubai" }, { code: "AE-AUH", name: "Abu Dabi" }] },
-  { code: "DE", name: "Almanya",   flag: "🇩🇪", regions: [] },
+  { code: "DE", name: "Almanya",   flag: "🇩🇪", regions: [{ code: "DE-BER", name: "Berlin" }, { code: "DE-MUC", name: "Münih" }] },
   { code: "GLOBAL", name: "Global", flag: "🌍", regions: [] },
 ];
 
-let orderCounter = 1000;
-let esimCounter = 0;
+/** ISO 3166-1 alpha-2 → ISO numeric for ICCID generation. */
+const COUNTRY_NUMERIC: Record<string, string> = {
+  TR: "90", US: "31", GB: "44", AE: "78", DE: "49", GLOBAL: "99",
+};
 
-// ─── Fake Provider ───
+/** Pool of MCC‑MNC pairs used for realistic CDR records. */
+const CDR_MCC_MNC_POOL: { mccMnc: string; country: string }[] = [
+  { mccMnc: "28601", country: "TR" },  // Turkcell
+  { mccMnc: "28602", country: "TR" },  // Vodafone TR
+  { mccMnc: "28603", country: "TR" },  // Türk Telekom
+  { mccMnc: "310410", country: "US" }, // AT&T
+  { mccMnc: "310260", country: "US" }, // T‑Mobile
+  { mccMnc: "23415", country: "GB" },  // Vodafone UK
+  { mccMnc: "23410", country: "GB" },  // O2
+  { mccMnc: "26201", country: "DE" },  // Telekom
+  { mccMnc: "42403", country: "AE" },  // du
+];
+
+// ═══════════════════════════════════════════════════════════════
+// Fake Provider
+// ═══════════════════════════════════════════════════════════════
 
 export class FakeProvider extends BaseProvider {
   readonly name = "fake";
 
-  private orders = new Map<string, FakeOrder>();
+  private subscribers = new Map<string, FakeSubscriber>();
   private esims = new Map<string, FakeEsim>();
+  private orders = new Map<string, FakeOrder>();
 
-  /** Optional webhook callback — called after async status transitions. */
   private onWebhook: WebhookCallback | null = null;
+
+  /** HMAC secret for outgoing webhook signatures. */
+  private readonly webhookSecret: string;
+
+  private orderCounter = 1000;
+  private subscriberCounter = 0;
 
   constructor(webhookCallback?: WebhookCallback) {
     super();
     this.onWebhook = webhookCallback ?? null;
+    this.webhookSecret = process.env.WEBHOOK_SECRET ?? "fake-webhook-dev-secret-change-in-prod";
   }
 
-  /** Replace the webhook callback at runtime. */
   setWebhookCallback(cb: WebhookCallback): void {
     this.onWebhook = cb;
   }
 
-  // ─── Product / Catalog ───
+  // ══════════════════════════════════════════════════════════
+  // Catalog
+  // ══════════════════════════════════════════════════════════
 
-  protected async _fetchProducts(): Promise<ProviderProduct[]> {
-    return [...FAKE_PRODUCTS];
+  protected async _fetchPlans(): Promise<ProviderPlan[]> {
+    return [...FAKE_PLANS];
   }
 
   protected async _fetchCountries(): Promise<ProviderCountry[]> {
@@ -154,186 +220,299 @@ export class FakeProvider extends BaseProvider {
     return country?.regions ?? [];
   }
 
-  // ─── Orders ───
+  // ══════════════════════════════════════════════════════════
+  // Subscriber / Account
+  // ══════════════════════════════════════════════════════════
+
+  protected async _createSubscriber(request: CreateSubscriberRequest): Promise<ProviderSubscriber> {
+    const id = ++this.subscriberCounter;
+    const accountId = `fake-sub-${id}`;
+    const now = new Date().toISOString();
+
+    const subscriber: FakeSubscriber = {
+      accountId,
+      externalRef: request.externalRef ?? `ext-${Date.now()}`,
+      email: request.email,
+      countryCode: request.countryCode ?? "TR",
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.subscribers.set(accountId, subscriber);
+    this.logger.info({ accountId, email: request.email }, "Subscriber created");
+    return { ...subscriber };
+  }
+
+  protected async _getSubscriber(accountId: string): Promise<ProviderSubscriber> {
+    const sub = this.subscribers.get(accountId);
+    if (!sub) {
+      throw new ProviderValidationError(this.name, `Subscriber bulunamadı: ${accountId}`);
+    }
+    return { ...sub };
+  }
+
+  protected async _updateSubscriberStatus(
+    accountId: string,
+    status: SubscriberStatus,
+  ): Promise<ProviderSubscriber> {
+    const sub = this.subscribers.get(accountId);
+    if (!sub) throw new ProviderValidationError(this.name, `Subscriber bulunamadı: ${accountId}`);
+
+    sub.status = status;
+    sub.updatedAt = new Date().toISOString();
+    return { ...sub };
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Orders
+  // ══════════════════════════════════════════════════════════
 
   protected async _createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResult> {
-    const product = FAKE_PRODUCTS.find((p) => p.id === request.productId);
-    if (!product) {
-      throw new ProviderProductNotFoundError(this.name, request.productId);
+    const plan = FAKE_PLANS.find((p) => p.planId === request.planId);
+    if (!plan) {
+      throw new ProviderProductNotFoundError(this.name, request.planId);
     }
 
-    const orderId = `FAKE-ORD-${++orderCounter}`;
+    const orderId = `FAKE-ORD-${++this.orderCounter}`;
     const items: FakeOrderItem[] = [];
 
+    // Ensure subscriber exists (create if needed)
+    let subscriberId = request.subscriberId;
+    if (!subscriberId) {
+      const sub = await this._createSubscriber({
+        email: request.customerEmail,
+        countryCode: request.countryCode ?? plan.countryCoverage[0],
+      });
+      subscriberId = sub.accountId;
+    }
+
+    const countryNum = COUNTRY_NUMERIC[plan.countryCoverage[0] ?? "GLOBAL"] ?? "99";
+
     for (let i = 0; i < request.quantity; i++) {
-      const itemId = `${orderId}-${i + 1}`;
-      const iccid = generateFakeIccid(++esimCounter);
-      const lpa = this.generateLpa(iccid);
+      const itemId = `${orderId}-ITEM-${i + 1}`;
+      const iccid = generateFakeIccid(countryNum, this.orderCounter * 100 + i);
+      const matchingId = `MF-${iccid.slice(-8)}`;
+      const smdpAddress = "smdp.fake-esim.io";
+      const activationCode = buildActivationCode(smdpAddress, matchingId);
+      const eid = generateFakeEid();
+
+      const qrContent = activationCode;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrContent)}`;
 
       items.push({
-        providerItemId: itemId,
+        itemId,
         iccid,
-        status: "PROCESSING",
-        activationCode: lpa.activationCode,
-        qrCodeUrl: lpa.qrCodeUrl,
-        smdpAddress: lpa.smdpAddress,
+        eid,
+        status: "provisioning",
+        qrCodeUrl,
+        activationCode,
+        smdpAddress,
+        matchingId,
       });
 
-      // Create eSIM record
+      // Create GSMA‑compliant eSIM profile
       const now = new Date();
-      const durationDays = product.durationDays ?? 30;
+      const validityDays = plan.validityDays;
       this.esims.set(iccid, {
         iccid,
-        status: "INACTIVE",
-        imsi: this.generateImsi(),
-        msisdn: null,
-        activationCode: lpa.activationCode,
-        qrCodeUrl: lpa.qrCodeUrl,
-        smdpAddress: lpa.smdpAddress,
-        productName: product.name,
-        dataTotalMB: product.dataAmountMB ?? 0,
+        eid,
+        imsi: generateFakeImsi(),
+        msisdn: null, // data‑only eSIM, MSISDN assigned later if voice
+        activationCode,
+        qrCodeUrl,
+        smdpAddress,
+        matchingId,
+        profileStatus: "released",
+        apn: plan.apn,
+        planId: plan.planId,
+        orderId,
+        subscriberId,
+        dataTotalMB: plan.dataLimitMB ?? 0,
         dataUsedMB: 0,
-        voiceTotalMinutes: product.type === "VOICE_BUNDLE" ? 120 : 0,
+        voiceTotalMinutes: plan.planType === "voice_data" ? 120 : 0,
         voiceUsedMinutes: 0,
-        smsTotal: product.type === "VOICE_BUNDLE" ? 100 : 0,
+        smsTotal: plan.planType === "voice_data" ? 100 : 0,
         smsUsed: 0,
         createdAt: now.toISOString(),
-        activatedAt: null,
-        expiresAt: null,
+        updatedAt: now.toISOString(),
         periodStart: now.toISOString(),
-        periodEnd: new Date(now.getTime() + durationDays * 86400000).toISOString(),
+        periodEnd: new Date(now.getTime() + validityDays * 86400000).toISOString(),
       });
     }
 
     const order: FakeOrder = {
-      providerOrderId: orderId,
-      status: "PROCESSING",
+      orderId,
+      subscriberId,
+      planId: plan.planId,
+      status: "provisioning",
+      quantity: request.quantity,
       items,
       createdAt: new Date().toISOString(),
+      activatedAt: null,
     };
     this.orders.set(orderId, order);
 
-    // Simulate async completion after 2-5 seconds
+    // Simulate async provisioning → completed after 2‑5 seconds
     const delay = 2000 + Math.floor(Math.random() * 3000);
-    setTimeout(() => this.completeOrder(orderId), delay);
+    setTimeout(() => this.completeOrderProvisioning(orderId), delay);
 
-    return this.normalizeOrder({
-      providerOrderId: order.providerOrderId,
-      status: order.status,
-      items: order.items.map((it) => ({
-        providerItemId: it.providerItemId,
-        iccid: it.iccid,
-        status: it.status,
-        qrCodeUrl: it.qrCodeUrl,
-        activationCode: it.activationCode,
-        smdpAddress: it.smdpAddress,
-      })),
-      createdAt: order.createdAt,
-    });
+    return this.toOrderResult(order);
   }
 
   protected async _getOrderStatus(providerOrderId: string): Promise<ProviderOrderResult> {
     const order = this.orders.get(providerOrderId);
-    if (!order) {
-      throw new ProviderOrderNotFoundError(this.name, providerOrderId);
-    }
-
-    return {
-      providerOrderId: order.providerOrderId,
-      status: order.status,
-      items: order.items.map((it) => ({
-        providerItemId: it.providerItemId,
-        iccid: it.iccid,
-        status: it.status,
-        qrCodeUrl: it.qrCodeUrl,
-        activationCode: it.activationCode,
-        smdpAddress: it.smdpAddress,
-      })),
-      createdAt: order.createdAt,
-    };
+    if (!order) throw new ProviderOrderNotFoundError(this.name, providerOrderId);
+    return this.toOrderResult(order);
   }
 
   protected async _cancelOrder(providerOrderId: string): Promise<ProviderOrderResult> {
     const order = this.orders.get(providerOrderId);
-    if (!order) {
-      throw new ProviderOrderNotFoundError(this.name, providerOrderId);
+    if (!order) throw new ProviderOrderNotFoundError(this.name, providerOrderId);
+
+    if (order.status === "completed" || order.status === "cancelled") {
+      throw new ProviderValidationError(
+        this.name,
+        `Sipariş ${order.status} durumunda iptal edilemez`,
+      );
     }
 
-    if (order.status === "COMPLETED" || order.status === "CANCELLED" || order.status === "REFUNDED") {
-      throw new ProviderWebhookError(this.name, "cancel", `Sipariş ${order.status} durumunda iptal edilemez`);
-    }
-
-    order.status = "CANCELLED";
+    order.status = "cancelled";
     for (const item of order.items) {
-      item.status = "CANCELLED";
-      const esim = this.esims.get(item.iccid);
-      if (esim) esim.status = "TERMINATED";
+      item.status = "cancelled";
+      if (item.iccid) {
+        const esim = this.esims.get(item.iccid);
+        if (esim) esim.profileStatus = "deleted";
+      }
     }
 
-    return {
-      providerOrderId: order.providerOrderId,
-      status: order.status,
-      items: order.items.map((it) => ({
-        providerItemId: it.providerItemId,
-        iccid: it.iccid,
-        status: it.status,
-        qrCodeUrl: it.qrCodeUrl,
-        activationCode: it.activationCode,
-        smdpAddress: it.smdpAddress,
-      })),
-      createdAt: order.createdAt,
-    };
+    return this.toOrderResult(order);
   }
 
-  // ─── eSIM Lifecycle ───
+  // ══════════════════════════════════════════════════════════
+  // eSIM Lifecycle (GSMA state machine)
+  // ══════════════════════════════════════════════════════════
 
-  protected async _getEsimDetails(iccid: string): Promise<ProviderEsimDetails> {
+  protected async _getEsimProfile(iccid: string): Promise<ProviderEsimProfile> {
     const esim = this.esims.get(iccid);
-    if (!esim) {
-      throw new ProviderEsimNotFoundError(this.name, iccid);
-    }
-    return this.toEsimDetails(esim);
+    if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
+    return this.toEsimProfile(esim);
   }
 
   protected async _activateEsim(iccid: string): Promise<ProviderEsimActivation> {
     const esim = this.esims.get(iccid);
-    if (!esim) {
-      throw new ProviderEsimNotFoundError(this.name, iccid);
+    if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
+
+    // GSMA transition: released → downloaded
+    if (esim.profileStatus !== "released") {
+      throw new ProviderValidationError(
+        this.name,
+        `eSIM ${iccid} aktivasyona uygun değil (durum: ${esim.profileStatus}). Sadece "released" durumundaki profiller aktive edilebilir.`,
+      );
     }
 
-    esim.status = "ACTIVE";
-    esim.activatedAt = new Date().toISOString();
+    esim.profileStatus = "downloaded";
+    esim.updatedAt = new Date().toISOString();
+
+    this.logger.info({ iccid }, "eSIM profile released → downloaded");
 
     return {
       iccid: esim.iccid,
       activationCode: esim.activationCode,
       qrCodeUrl: esim.qrCodeUrl,
       smdpAddress: esim.smdpAddress,
+      matchingId: esim.matchingId,
     };
   }
 
-  protected async _suspendEsim(iccid: string): Promise<ProviderEsimDetails> {
+  /** Simulate device binding: downloaded → installed. */
+  async simulateDeviceBind(iccid: string): Promise<ProviderEsimProfile> {
     const esim = this.esims.get(iccid);
     if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
-    esim.status = "SUSPENDED";
-    return this.toEsimDetails(esim);
+
+    if (esim.profileStatus !== "downloaded") {
+      throw new ProviderValidationError(this.name, "Sadece downloaded durumundaki eSIM cihaza bağlanabilir");
+    }
+
+    esim.profileStatus = "installed";
+    if (!esim.msisdn) {
+      esim.msisdn = generateFakeMsisdn("90");
+    }
+    esim.updatedAt = new Date().toISOString();
+
+    this.logger.info({ iccid }, "eSIM downloaded → installed (device bound)");
+
+    if (this.onWebhook) {
+      await this.fireWebhook("esim.installed", this.toEsimProfile(esim));
+    }
+
+    return this.toEsimProfile(esim);
   }
 
-  protected async _reactivateEsim(iccid: string): Promise<ProviderEsimDetails> {
+  /** Transition installed → enabled. */
+  async simulateEnable(iccid: string): Promise<ProviderEsimProfile> {
     const esim = this.esims.get(iccid);
     if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
-    esim.status = "ACTIVE";
-    return this.toEsimDetails(esim);
+    if (esim.profileStatus !== "installed" && esim.profileStatus !== "disabled") {
+      throw new ProviderValidationError(this.name, "Bu eSIM enable edilemez");
+    }
+    esim.profileStatus = "enabled";
+    esim.updatedAt = new Date().toISOString();
+
+    if (this.onWebhook) {
+      await this.fireWebhook("esim.enabled", this.toEsimProfile(esim));
+    }
+
+    return this.toEsimProfile(esim);
   }
 
-  protected async _terminateEsim(iccid: string): Promise<ProviderEsimDetails> {
+  protected async _disableEsim(iccid: string): Promise<ProviderEsimProfile> {
     const esim = this.esims.get(iccid);
     if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
-    esim.status = "TERMINATED";
-    return this.toEsimDetails(esim);
+    if (esim.profileStatus !== "enabled") {
+      throw new ProviderValidationError(this.name, `eSIM ${iccid} şu anda enabled değil (${esim.profileStatus})`);
+    }
+    esim.profileStatus = "disabled";
+    esim.updatedAt = new Date().toISOString();
+
+    if (this.onWebhook) {
+      await this.fireWebhook("esim.disabled", this.toEsimProfile(esim));
+    }
+
+    return this.toEsimProfile(esim);
   }
 
-  // ─── Usage ───
+  protected async _enableEsim(iccid: string): Promise<ProviderEsimProfile> {
+    const esim = this.esims.get(iccid);
+    if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
+    if (esim.profileStatus !== "disabled") {
+      throw new ProviderValidationError(this.name, `eSIM ${iccid} şu anda disabled değil (${esim.profileStatus})`);
+    }
+    esim.profileStatus = "enabled";
+    esim.updatedAt = new Date().toISOString();
+
+    if (this.onWebhook) {
+      await this.fireWebhook("esim.enabled", this.toEsimProfile(esim));
+    }
+
+    return this.toEsimProfile(esim);
+  }
+
+  protected async _deleteEsim(iccid: string): Promise<ProviderEsimProfile> {
+    const esim = this.esims.get(iccid);
+    if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
+    esim.profileStatus = "deleted";
+    esim.updatedAt = new Date().toISOString();
+
+    if (this.onWebhook) {
+      await this.fireWebhook("esim.deleted", this.toEsimProfile(esim));
+    }
+
+    return this.toEsimProfile(esim);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Usage / CDR
+  // ══════════════════════════════════════════════════════════
 
   protected async _getUsageRecords(
     iccid: string,
@@ -345,20 +524,25 @@ export class FakeProvider extends BaseProvider {
 
     const fromDate = new Date(from);
     const toDate = new Date(to);
-    const days = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / 86400000));
-    const dayMs = 86400000;
+    const hours = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / 3_600_000));
+    const hourMs = 3_600_000;
 
     const records: ProviderUsageRecord[] = [];
-    for (let i = 0; i < days; i++) {
-      const day = new Date(fromDate.getTime() + i * dayMs);
+    for (let i = 0; i < Math.min(hours, 168); i++) { // Max 1 week
+      const net = CDR_MCC_MNC_POOL[Math.floor(Math.random() * CDR_MCC_MNC_POOL.length)]!;
+      const sessionStart = new Date(fromDate.getTime() + i * hourMs);
+      const sessionEnd = new Date(sessionStart.getTime() + hourMs);
+      const recordType: UsageRecordType = Math.random() > 0.85 ? "voice" : Math.random() > 0.95 ? "sms" : "data";
+
       records.push({
-        type: "DATA",
-        usedAmount: this.randomBetween(10, 200),
-        totalAmount: esim.dataTotalMB,
-        unit: "MB",
-        remainingAmount: Math.max(0, esim.dataTotalMB - esim.dataUsedMB),
-        periodStart: day.toISOString(),
-        periodEnd: new Date(day.getTime() + dayMs).toISOString(),
+        usageId: `CDR-${iccid.slice(-8)}-${sessionStart.getTime()}`,
+        iccid,
+        sessionStart: sessionStart.toISOString(),
+        sessionEnd: sessionEnd.toISOString(),
+        dataUsedMB: recordType === "data" ? this.randomBetween(1, 150) : 0,
+        networkMccMnc: net.mccMnc,
+        country: net.country,
+        recordType,
       });
     }
     return records;
@@ -372,11 +556,10 @@ export class FakeProvider extends BaseProvider {
     const esim = this.esims.get(iccid);
     if (!esim) throw new ProviderEsimNotFoundError(this.name, iccid);
 
-    // Simulate some usage
-    const newUsed = Math.min(esim.dataTotalMB, esim.dataUsedMB + this.randomBetween(5, 100));
-    esim.dataUsedMB = newUsed;
+    // Simulate incremental usage on each query
+    esim.dataUsedMB = Math.min(esim.dataTotalMB, esim.dataUsedMB + this.randomBetween(5, 100));
     esim.voiceUsedMinutes = Math.min(esim.voiceTotalMinutes, esim.voiceUsedMinutes + this.randomBetween(0, 5));
-    esim.smsUsed = Math.min(esim.smsTotal, esim.smsUsed + this.randomBetween(0, 2));
+    esim.smsUsed = Math.min(esim.smsTotal, esim.smsUsed + this.randomBetween(0, 3));
 
     return {
       iccid: esim.iccid,
@@ -391,9 +574,58 @@ export class FakeProvider extends BaseProvider {
     };
   }
 
-  // ─── Webhook ───
+  // ══════════════════════════════════════════════════════════
+  // Billing / Invoice (stub)
+  // ══════════════════════════════════════════════════════════
+
+  protected async _getBillingRecords(
+    accountId: string,
+    periodStart?: string,
+    periodEnd?: string,
+  ): Promise<ProviderBillingRecord[]> {
+    const subscriber = this.subscribers.get(accountId);
+    if (!subscriber) {
+      throw new ProviderValidationError(this.name, `Subscriber bulunamadı: ${accountId}`);
+    }
+
+    // Generate one invoice per month between periodStart and periodEnd
+    const start = periodStart ? new Date(periodStart) : new Date(Date.now() - 90 * 86400000);
+    const end = periodEnd ? new Date(periodEnd) : new Date();
+    const months = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (30 * 86400000)));
+
+    const records: ProviderBillingRecord[] = [];
+    for (let i = 0; i < Math.min(months, 6); i++) {
+      const monthStart = new Date(start.getTime() + i * 30 * 86400000);
+      const monthEnd = new Date(monthStart.getTime() + 30 * 86400000);
+      const amount = this.randomBetween(5, 50) + (Math.round(Math.random() * 100) / 100);
+
+      records.push({
+        invoiceId: `INV-${accountId}-${monthStart.toISOString().slice(0, 7)}`,
+        accountId,
+        periodStart: monthStart.toISOString(),
+        periodEnd: monthEnd.toISOString(),
+        amount,
+        currency: "USD",
+        status: i < months - 1 ? "paid" : "open",
+        lineItems: [
+          {
+            planId: "fake-tr-3gb-15d",
+            quantity: 1,
+            unitPrice: 9.99,
+            description: "Türkiye 3GB 15 Gün",
+          },
+        ],
+      });
+    }
+    return records;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Webhooks
+  // ══════════════════════════════════════════════════════════
 
   protected async _handleWebhook(payload: ProviderWebhookPayload): Promise<void> {
+    // Fake provider accepts internal webhooks only (via fireWebhook)
     throw new ProviderWebhookError(
       this.name,
       payload.eventType,
@@ -401,27 +633,72 @@ export class FakeProvider extends BaseProvider {
     );
   }
 
-  // ─── Private helpers ───
+  /**
+   * Build a signed webhook envelope (HMAC‑SHA256).
+   * This simulates what Telna would send to our webhook endpoint.
+   */
+  buildWebhookEnvelope(eventType: string, payloadData: Record<string, unknown>): ProviderWebhookEnvelope {
+    const eventId = this.generateUUID();
+    const timestamp = new Date().toISOString();
+    const payload = JSON.stringify(payloadData);
+    const toSign = `${eventId}.${timestamp}.${payload}`;
+    const signature = this.hmacSha256(this.webhookSecret, toSign);
 
-  private async completeOrder(orderId: string): Promise<void> {
+    return {
+      eventId,
+      eventType,
+      timestamp,
+      payload: payloadData,
+      signature,
+    };
+  }
+
+  /**
+   * Verify a webhook envelope signature.
+   */
+  verifyWebhookSignature(envelope: ProviderWebhookEnvelope): boolean {
+    const payload = JSON.stringify(envelope.payload);
+    const toSign = `${envelope.eventId}.${envelope.timestamp}.${payload}`;
+    const expected = this.hmacSha256(this.webhookSecret, toSign);
+    return expected === envelope.signature;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Private helpers
+  // ══════════════════════════════════════════════════════════
+
+  /** Completes order provisioning: provisioning → completed. */
+  private async completeOrderProvisioning(orderId: string): Promise<void> {
     const order = this.orders.get(orderId);
-    if (!order || order.status !== "PROCESSING") return;
+    if (!order || order.status !== "provisioning") return;
 
-    order.status = "COMPLETED";
+    order.status = "completed";
+    order.activatedAt = new Date().toISOString();
+
     for (const item of order.items) {
-      item.status = "COMPLETED";
+      item.status = "completed";
+      // Transition eSIM: released → downloaded → installed → enabled
+      if (item.iccid) {
+        const esim = this.esims.get(item.iccid);
+        if (esim && esim.profileStatus === "released") {
+          esim.profileStatus = "enabled";
+          esim.msisdn = generateFakeMsisdn("90");
+          esim.updatedAt = new Date().toISOString();
+        }
+      }
     }
 
-    this.logger.info({ orderId }, "Fake order completed (async)");
+    this.logger.info({ orderId }, "Order provisioning completed (async) — eSIMs enabled");
 
-    // Fire webhook callback if registered
     if (this.onWebhook) {
       try {
-        await this.onWebhook("order.status_changed", {
-          providerOrderId: orderId,
-          status: "COMPLETED",
+        await this.fireWebhook("order.completed", {
+          orderId: order.orderId,
+          subscriberId: order.subscriberId,
+          planId: order.planId,
+          status: "completed",
           items: order.items.map((it) => ({
-            providerItemId: it.providerItemId,
+            itemId: it.itemId,
             iccid: it.iccid,
             status: it.status,
           })),
@@ -432,36 +709,76 @@ export class FakeProvider extends BaseProvider {
     }
   }
 
-  private generateLpa(iccid: string): { activationCode: string; qrCodeUrl: string; smdpAddress: string } {
-    const smdp = "smdp.fake-esim.io";
-    const matchingId = `FAKE-${iccid.slice(-6)}`;
-    const activationCode = `${matchingId}-CODE`;
-    // LPA format: LPA:1${smdp}${matchingId}
-    const qrContent = `LPA:1$${smdp}$${matchingId}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrContent)}`;
-    return { activationCode, qrCodeUrl, smdpAddress: smdp };
+  private async fireWebhook(
+    eventType: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.onWebhook) return;
+    const envelope = this.buildWebhookEnvelope(eventType, data);
+    try {
+      await this.onWebhook(eventType, { envelope, ...data });
+    } catch {
+      // fire‑and‑forget, caller should handle
+    }
   }
 
-  private generateImsi(): string {
-    const prefix = "90170"; // Shared MNC-MCC for global IoT
-    const serial = String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, "0");
-    return prefix + serial;
+  private toOrderResult(order: FakeOrder): ProviderOrderResult {
+    return {
+      orderId: order.orderId,
+      subscriberId: order.subscriberId,
+      planId: order.planId,
+      status: order.status,
+      quantity: order.quantity,
+      items: order.items.map((it) => ({
+        itemId: it.itemId,
+        iccid: it.iccid,
+        eid: it.eid,
+        status: it.status,
+        qrCodeUrl: it.qrCodeUrl,
+        activationCode: it.activationCode,
+        smdpAddress: it.smdpAddress,
+        matchingId: it.matchingId,
+      })),
+      createdAt: order.createdAt,
+      activatedAt: order.activatedAt,
+    };
   }
 
-  private toEsimDetails(esim: FakeEsim): ProviderEsimDetails {
+  private toEsimProfile(esim: FakeEsim): ProviderEsimProfile {
     return {
       iccid: esim.iccid,
-      status: esim.status,
+      eid: esim.eid,
       imsi: esim.imsi,
       msisdn: esim.msisdn,
-      qrCodeUrl: esim.qrCodeUrl,
       activationCode: esim.activationCode,
+      qrCodeUrl: esim.qrCodeUrl,
       smdpAddress: esim.smdpAddress,
-      productName: esim.productName,
-      activatedAt: esim.activatedAt,
-      expiresAt: esim.expiresAt,
+      matchingId: esim.matchingId,
+      profileStatus: esim.profileStatus,
+      apn: esim.apn,
+      planId: esim.planId,
+      orderId: esim.orderId,
+      subscriberId: esim.subscriberId,
       createdAt: esim.createdAt,
+      updatedAt: esim.updatedAt,
     };
+  }
+
+  private generateUUID(): string {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  private hmacSha256(_secret: string, _message: string): string {
+    // In a real implementation use crypto.subtle or Node crypto.
+    // For the fake provider we use a deterministic placeholder since
+    // the webhook verification happens inside the same process.
+    // Real providers will use actual HMAC via Node/Edge crypto.
+    const hash = Buffer.from(_secret + _message).toString("hex").slice(0, 64);
+    return `sha256=${hash}`;
   }
 
   private randomBetween(min: number, max: number): number {
