@@ -3,26 +3,31 @@
 import { BaseService } from "@/lib/service";
 import { AppError, NotFoundError, ConflictError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { writeAuditLog } from "@/lib/audit";
 import { hash } from "bcryptjs";
 import {
   DistributorRepository,
   DealerRepository,
   SubDealerRepository,
   EmployeeRepository,
+  CustomerRepository,
 } from "./repository";
 import type {
   CreateDistributorInput,
   CreateDealerInput,
   CreateSubDealerInput,
   CreateEmployeeInput,
+  CreateCustomerInput,
   UpdateDistributorInput,
   UpdateDealerInput,
   UpdateSubDealerInput,
   UpdateEmployeeInput,
+  UpdateCustomerInput,
   OrganizationQuery,
   DealerQuery,
   SubDealerQuery,
   EmployeeQuery,
+  CustomerQuery,
 } from "./types";
 
 // ─── Distributor Service ───
@@ -73,6 +78,11 @@ export class DistributorService extends BaseService {
       where: { id },
       data: { isActive: !entity.isActive },
     });
+  }
+
+  async delete(id: string) {
+    await this.repo.findByIdOrThrow(id);
+    return (this.repo.delegate()).update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
   }
 
   private async ensureCodeUnique(tenantId: string, code: string) {
@@ -132,6 +142,11 @@ export class DealerService extends BaseService {
       where: { id },
       data: { isActive: !entity.isActive },
     });
+  }
+
+  async delete(id: string) {
+    await this.repo.findByIdOrThrow(id);
+    return (this.repo.delegate()).update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
   }
 
   private async ensureCodeUnique(tenantId: string, code: string) {
@@ -195,6 +210,11 @@ export class SubDealerService extends BaseService {
       where: { id },
       data: { isActive: !entity.isActive },
     });
+  }
+
+  async delete(id: string) {
+    await this.repo.findByIdOrThrow(id);
+    return (this.repo.delegate()).update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
   }
 
   private async ensureCodeUnique(tenantId: string, code: string) {
@@ -283,6 +303,94 @@ export class EmployeeService extends BaseService {
         subDealer: { select: { id: true, name: true } },
       },
     });
+  }
+
+  async delete(id: string) {
+    await prisma.user.findUniqueOrThrow({ where: { id } });
+    return prisma.user.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
+  }
+}
+
+// ─── Customer Service ───
+
+export class CustomerService extends BaseService {
+  private repo = new CustomerRepository();
+
+  constructor() { super("CustomerService"); }
+
+  async list(query: CustomerQuery) {
+    return this.repo.findManyByTenant(query);
+  }
+
+  async getById(id: string) {
+    const result = await this.repo.findById(id, {
+      distributor: { select: { id: true, name: true, code: true } },
+      dealer: { select: { id: true, name: true, code: true } },
+      subDealer: { select: { id: true, name: true, code: true } },
+      orders: {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          items: { include: { product: { select: { name: true } } } },
+        },
+      },
+      esims: {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      },
+    });
+    if (!result || result.deletedAt) throw new NotFoundError("Customer", id);
+    return result;
+  }
+
+  async create(tenantId: string, input: CreateCustomerInput) {
+    const existing = await prisma.customer.findUnique({ where: { email: input.email } });
+    if (existing) throw new ConflictError(`'${input.email}' email adresi zaten kayıtlı.`, "DUPLICATE_EMAIL");
+
+    const result = await this.repo.create({
+      ...input,
+      tenant: { connect: { id: tenantId } },
+      ...(input.distributorId ? { distributor: { connect: { id: input.distributorId } } } : {}),
+      ...(input.dealerId ? { dealer: { connect: { id: input.dealerId } } } : {}),
+      ...(input.subDealerId ? { subDealer: { connect: { id: input.subDealerId } } } : {}),
+    } as Parameters<typeof this.repo.create>[0]);
+
+    await writeAuditLog({ tenantId, action: "CREATE", entity: "Customer", entityId: result.id, newValue: input as Record<string, unknown> }).catch(() => {});
+    return result;
+  }
+
+  async update(id: string, input: UpdateCustomerInput) {
+    const data: Record<string, unknown> = {};
+    if (input.email !== undefined) data.email = input.email;
+    if (input.firstName !== undefined) data.firstName = input.firstName;
+    if (input.lastName !== undefined) data.lastName = input.lastName;
+    if (input.phone !== undefined) data.phone = input.phone;
+    if (input.countryCode !== undefined) data.countryCode = input.countryCode;
+    if (input.isActive !== undefined) data.isActive = input.isActive;
+    if (input.distributorId !== undefined) data.distributorId = input.distributorId || null;
+    if (input.dealerId !== undefined) data.dealerId = input.dealerId || null;
+    if (input.subDealerId !== undefined) data.subDealerId = input.subDealerId || null;
+
+    const result = await (this.repo.delegate()).update({ where: { id }, data });
+    await writeAuditLog({ tenantId: "default", action: "UPDATE", entity: "Customer", entityId: id, newValue: input as Record<string, unknown> }).catch(() => {});
+    return result;
+  }
+
+  async toggleStatus(id: string) {
+    const entity = await this.repo.findByIdOrThrow(id);
+    const result = await (this.repo.delegate()).update({
+      where: { id },
+      data: { isActive: !entity.isActive },
+    });
+    await writeAuditLog({ tenantId: "default", action: entity.isActive ? "DEACTIVATE" : "ACTIVATE", entity: "Customer", entityId: id }).catch(() => {});
+    return result;
+  }
+
+  async delete(id: string) {
+    await this.repo.findByIdOrThrow(id);
+    const result = await (this.repo.delegate()).update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
+    await writeAuditLog({ tenantId: "default", action: "DELETE", entity: "Customer", entityId: id }).catch(() => {});
+    return result;
   }
 }
 

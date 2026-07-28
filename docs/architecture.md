@@ -32,7 +32,7 @@ Distributor (Top-level tenant)
 - **Backend**: Next.js API Routes (REST), service layer pattern
 - **Database**: PostgreSQL via Prisma ORM
 - **Provider Integration**: Pluggable adapter pattern (FakeProvider for dev/test, TelnaProvider for production)
-- **Auth**: NextAuth.js / Auth.js with role-based access control (RBAC)
+- **Auth**: Custom JWT-based auth with `jose`, bcryptjs, refresh tokens, and role-based access control (RBAC)
 
 ---
 
@@ -167,12 +167,12 @@ graph TD
 | Framework | Next.js 14+ (App Router) |
 | Language | TypeScript (strict mode) |
 | Styling | Tailwind CSS + shadcn/ui |
-| Database | PostgreSQL 15+ |
+| Database | PostgreSQL 16 |
 | ORM | Prisma |
-| Auth | Auth.js (NextAuth.js v5) |
+| Auth | Custom JWT (jose) + bcryptjs |
 | Validation | Zod |
 | Testing | Vitest + Playwright |
-| Package Manager | pnpm |
+| Package Manager | npm |
 | Containerization | Docker + Docker Compose |
 
 ---
@@ -191,7 +191,7 @@ graph TD
 ```
 Docker Compose:
   - app: Next.js standalone build
-  - db: PostgreSQL 15
+  - db: PostgreSQL 16
   - redis: (optional) for session caching & rate limiting
 ```
 

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from "../src/lib/auth/permissions";
 
 const prisma = new PrismaClient();
 
@@ -18,6 +19,45 @@ async function main() {
     },
   });
   console.log(`  ✓ Tenant: ${tenant.name}`);
+
+  // ── Seed Permissions ──
+  console.log("  ⏳ Seeding permissions...");
+  const permissionCodes = Object.keys(ALL_PERMISSIONS) as Array<keyof typeof ALL_PERMISSIONS>;
+  const groupMap: Record<string, string> = {};
+
+  for (const code of permissionCodes) {
+    const group = code.split(".")[0] ?? "Other";
+    const description = ALL_PERMISSIONS[code as keyof typeof ALL_PERMISSIONS];
+    await prisma.permission.upsert({
+      where: { code },
+      update: { description, group },
+      create: { code, description, group },
+    });
+    groupMap[code] = group;
+  }
+  console.log(`  ✓ ${permissionCodes.length} permissions seeded`);
+
+  // ── Seed Default Role Permissions ──
+  console.log("  ⏳ Seeding default role permissions...");
+  const allPermissions = await prisma.permission.findMany();
+  let roleCount = 0;
+
+  for (const [role, codes] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+    for (const code of codes) {
+      const perm = allPermissions.find((p) => p.code === code);
+      if (perm) {
+        await prisma.rolePermission.upsert({
+          where: {
+            role_permissionId: { role: role as any, permissionId: perm.id },
+          },
+          update: {},
+          create: { role: role as any, permissionId: perm.id },
+        });
+        roleCount++;
+      }
+    }
+  }
+  console.log(`  ✓ ${roleCount} default role permissions seeded`);
 
   // ── Distributor ──
   const distributor = await prisma.distributor.upsert({

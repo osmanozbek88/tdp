@@ -122,6 +122,37 @@ export interface EmployeeQuery extends OrganizationQuery {
   subDealerId?: string;
 }
 
+// ─── Customer Types ───
+
+export interface CreateCustomerInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  countryCode?: string;
+  distributorId?: string;
+  dealerId?: string;
+  subDealerId?: string;
+}
+
+export interface UpdateCustomerInput {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  countryCode?: string;
+  isActive?: boolean;
+  distributorId?: string;
+  dealerId?: string;
+  subDealerId?: string;
+}
+
+export interface CustomerQuery extends OrganizationQuery {
+  distributorId?: string;
+  dealerId?: string;
+  subDealerId?: string;
+}
+
 // ─── PriceGroup Types ───
 
 export interface CreatePriceGroupInput {

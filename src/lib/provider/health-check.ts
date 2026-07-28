@@ -19,7 +19,7 @@ async function runHealthCheck(): Promise<void> {
 
   try {
     const provider = await getActiveProvider();
-    await provider.fetchPlans();
+    await provider.getProducts();
     // Healthy if we got plans without error
   } catch {
     status = "degraded";

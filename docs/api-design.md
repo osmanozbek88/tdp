@@ -15,7 +15,7 @@ All API requests (except auth endpoints) require a Bearer token:
 Authorization: Bearer {session_token}
 ```
 
-Session management via Auth.js (NextAuth.js v5). Cookies used for server-rendered pages, Bearer header for API clients.
+Session management via custom JWT tokens (using `jose` library). Access tokens passed via `Authorization: Bearer` header or `accessToken` cookie. Refresh tokens stored in database.
 
 ---
 

@@ -1,9 +1,8 @@
-
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPermissionsWithRoles, grantPermission, revokePermission } from "@/lib/auth/permission-service";
 import { getRolePermissionCodes } from "@/lib/auth/permission-repository";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/lib/auth/permissions";
+import { withPermission } from "@/lib/auth/with-permission";
 import type { UserRole } from "@prisma/client";
 
 const VALID_ROLES: UserRole[] = [
@@ -17,17 +16,15 @@ function isValidRole(role: string): role is UserRole {
 }
 
 // GET /api/auth/permissions — list all permissions with roles
-export async function GET(req: Request) {
+export const GET = withPermission("Admin.ManageRoles", async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const role = searchParams.get("role");
   const defaultFlag = searchParams.get("default");
 
-  // Return default permission mapping (from code, not DB)
   if (defaultFlag === "true") {
     return NextResponse.json({ success: true, data: DEFAULT_ROLE_PERMISSIONS });
   }
 
-  // Return effective permissions for a single role
   if (role) {
     if (!isValidRole(role)) {
       return NextResponse.json(
@@ -39,13 +36,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: { role, permissions: codes } });
   }
 
-  // Return all permissions with their assigned roles
   const permissions = await getPermissionsWithRoles();
   return NextResponse.json({ success: true, data: permissions });
-}
+});
 
 // POST /api/auth/permissions — grant or revoke a permission
-export async function POST(req: Request) {
+export const POST = withPermission("Admin.ManageRoles", async (req: NextRequest) => {
   const { role, permissionId, action } = await req.json();
 
   if (!isValidRole(role)) {
@@ -69,5 +65,4 @@ export async function POST(req: Request) {
     { success: false, error: { code: "VALIDATION_ERROR", message: "action 'grant' veya 'revoke' olmalı" } },
     { status: 422 },
   );
-}
-
+});

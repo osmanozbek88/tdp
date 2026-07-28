@@ -7,6 +7,7 @@ import {
   DealerService,
   SubDealerService,
   EmployeeService,
+  CustomerService,
 } from "./service";
 import { PriceGroupService } from "./price-group.service";
 import { sendSuccess, sendCreated, sendNoContent } from "@/lib/response";
@@ -136,9 +137,13 @@ export const distributorController = {
     const result = await service.toggleStatus(params.id);
     return sendSuccess(result);
   },
-};
 
-// ─── Dealer Controller ───
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new DistributorService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
+  },
+};
 
 export const dealerController = {
   async list(req: NextRequest) {
@@ -175,9 +180,13 @@ export const dealerController = {
     const result = await service.toggleStatus(params.id);
     return sendSuccess(result);
   },
-};
 
-// ─── SubDealer Controller ───
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new DealerService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
+  },
+};
 
 export const subDealerController = {
   async list(req: NextRequest) {
@@ -214,9 +223,13 @@ export const subDealerController = {
     const result = await service.toggleStatus(params.id);
     return sendSuccess(result);
   },
-};
 
-// ─── PriceGroup Controller ───
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new SubDealerService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
+  },
+};
 
 const priceGroupSchema = z.object({
   name: z.string().min(1, "İsim gereklidir"),
@@ -262,6 +275,72 @@ export const priceGroupController = {
     const result = await service.toggleStatus(params.id);
     return sendSuccess(result);
   },
+
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new PriceGroupService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
+  },
+};
+
+// ─── Customer Controller ───
+
+const customerSchema = z.object({
+  email: z.string().email("Geçerli e-posta girin"),
+  firstName: z.string().min(1, "Ad gereklidir"),
+  lastName: z.string().min(1, "Soyad gereklidir"),
+  phone: z.string().optional(),
+  countryCode: z.string().optional(),
+  distributorId: z.string().optional(),
+  dealerId: z.string().optional(),
+  subDealerId: z.string().optional(),
+});
+
+const customerUpdateSchema = customerSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+export const customerController = {
+  async list(req: NextRequest) {
+    const service = new CustomerService();
+    const query = parseQuery(req);
+    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
+  },
+
+  async getById(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new CustomerService();
+    const result = await service.getById(params.id);
+    return sendSuccess(result);
+  },
+
+  async create(req: NextRequest) {
+    const body = await req.json();
+    const input = customerSchema.parse(body);
+    const service = new CustomerService();
+    const result = await service.create(TENANT_ID, input);
+    return sendCreated(result);
+  },
+
+  async update(req: NextRequest, { params }: { params: { id: string } }) {
+    const body = await req.json();
+    const input = customerUpdateSchema.parse(body);
+    const service = new CustomerService();
+    const result = await service.update(params.id, input);
+    return sendSuccess(result);
+  },
+
+  async toggleStatus(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new CustomerService();
+    const result = await service.toggleStatus(params.id);
+    return sendSuccess(result);
+  },
+
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new CustomerService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
+  },
 };
 
 // ─── Employee Controller ───
@@ -300,6 +379,12 @@ export const employeeController = {
     const service = new EmployeeService();
     const result = await service.toggleStatus(params.id);
     return sendSuccess(result);
+  },
+
+  async delete(_req: NextRequest, { params }: { params: { id: string } }) {
+    const service = new EmployeeService();
+    await service.delete(params.id);
+    return sendSuccess({ deleted: true });
   },
 };
 

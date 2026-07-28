@@ -44,15 +44,33 @@ src/
 │   │   ├── auth/          # Kimlik doğrulama (login, MFA, email verify, şifre sıfırlama)
 │   │   ├── dashboard/     # Dashboard istatistik API'si (FAZ 5)
 │   │   ├── health/        # Sağlık kontrolü endpoint'i
-│   │   └── provider/      # Provider test endpoint'i (plan listesi)
-│   └── dashboard/         # Dashboard, admin panel, rapor sayfaları
+│   │   ├── provider/      # Provider test endpoint'i (plan listesi)
+│   │   └── v1/            # REST API v1
+│   │       ├── customers/      # Müşteri CRUD + detay
+│   │       ├── distributors/   # Distribütör CRUD
+│   │       ├── dealers/        # Bayi CRUD
+│   │       ├── sub-dealers/    # Alt bayi CRUD
+│   │       ├── employees/      # Personel CRUD
+│   │       ├── price-groups/   # Fiyat grubu CRUD
+│   │       ├── audit-logs/     # İşlem logları
+│   │       └── support-tickets/# Destek talepleri
+│   └── dashboard/
+│       ├── admin/             # Yetki yönetimi paneli
+│       ├── organization/      # Firma/bayi yönetimi (6 sekme)
+│       ├── customers/[id]/    # Müşteri detay profili (5 sekme)
+│       └── reports/           # Raporlar
 ├── components/
 │   ├── layout/            # Sidebar, Header
+│   ├── theme-provider.tsx  # Dark/light tema desteği
 │   └── ui/                # shadcn/ui bileşenleri (Button, Card, Table, Badge vb.)
 ├── config/
 │   └── env.ts             # Ortam değişkenleri (PROVIDER_TYPE, DATABASE_URL vb.)
+├── hooks/
+│   └── use-mobile.ts      # Mobil cihaz algılama hook'u
 └── lib/
     ├── auth/              # JWT, permission guard, permission service/repository
+    │   └── with-permission.ts  # Route handler permission wrapper (FAZ 3)
+    ├── audit.ts           # İşlem loglama yardımcıları (FAZ 7)
     ├── provider/          # Provider soyutlama katmanı (FAZ 4)
     │   ├── types.ts           # GSMA uyumlu DTO'lar
     │   ├── dto.ts             # Luhn, ICCID, IMSI, EID, MSISDN, SGP.22 yardımcıları
@@ -99,6 +117,7 @@ takip edecek şekilde ilişkilendirilmiştir.
 | `WebhookLog` | Telna webhook logları |
 | `ProviderStatus` | Provider sağlık kontrolü sonuçları |
 | `AuditLog` | Denetim logları |
+| `SupportTicket` | Destek talepleri |
 | `Permission` / `RolePermission` | RBAC yetki matrisi |
 
 ---
@@ -110,11 +129,26 @@ takip edecek şekilde ilişkilendirilmiştir.
 | Widget | Veri Kaynağı |
 |--------|-------------|
 | Günlük / Aylık Satış | Tamamlanmış siparişler üzerinden anlık ciro |
-| Sipariş Sayısı | Günlük ve aylık sipariş adetleri |
+| Sipariş Sayısı | Bugün/Bu ay toggle ile seçilebilir |
 | Bayi Sayısı | Tüm dağıtım kanalı toplamı |
 | Müşteri Sayısı | Kayıtlı müşteri sayısı |
+| Gelir | Bugün/Bu ay toggle ile filtrelenebilir |
 | Son Siparişler | Son 15 sipariş detayı |
-| Provider Durumu | Operatör sağlık kontrolü (gecikme, uptime) |
+| Provider Durumu | Operatör sağlık kontrolü (gecikme, uptime, yeşil/sarı/kırmızı rozet) |
+
+## Organizasyon Yönetimi
+
+`/dashboard/organization` sayfasında 6 sekme ile tüm hiyerarşi yönetilir:
+Distribütörler, Bayiler, Alt Bayiler, Personel, Fiyat Grupları, Müşteriler.
+Her sekmede arama, Aktif/Pasif/Tümü filtresi, ekleme/düzenleme modal formu,
+durum değiştirme ve silme işlemleri mevcuttur.
+
+## Müşteri Profili (CRM)
+
+`/dashboard/customers/[id]` sayfasında 5 sekmeli müşteri profili:
+**Profil** (iletişim + organizasyon), **Siparişler** (sipariş geçmişi),
+**eSIM'ler** (ICCID, IMSI, durum), **Destek Talepleri** (liste + oluşturma),
+**İşlem Logları** (audit trail).
 
 ---
 

@@ -12,6 +12,7 @@ import {
   Globe,
   BarChart3,
   Settings,
+  ShieldCheck,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Organizasyon", href: "/dashboard/organization", icon: Building2 },
   { label: "eSIM'ler", href: "/dashboard/esims", icon: Globe },
   { label: "Raporlar", href: "/dashboard/reports", icon: BarChart3 },
+  { label: "Yetkiler", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Ayarlar", href: "/dashboard/settings", icon: Settings },
 ];
 

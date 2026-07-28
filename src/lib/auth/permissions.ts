@@ -52,6 +52,30 @@ export const ALL_PERMISSIONS = {
   "Admin.Access": "Admin paneline erişim",
   "Admin.ManageRoles": "Rol ve yetki yönetimi",
 
+  // Distributors
+  "Distributors.Create": "Distribütör oluşturma",
+  "Distributors.View": "Distribütör görüntüleme",
+  "Distributors.Edit": "Distribütör düzenleme",
+  "Distributors.Delete": "Distribütör silme",
+
+  // SubDealers
+  "SubDealers.Create": "Alt bayi oluşturma",
+  "SubDealers.View": "Alt bayi görüntüleme",
+  "SubDealers.Edit": "Alt bayi düzenleme",
+  "SubDealers.Delete": "Alt bayi silme",
+
+  // Employees
+  "Employees.Create": "Çalışan oluşturma",
+  "Employees.View": "Çalışan görüntüleme",
+  "Employees.Edit": "Çalışan düzenleme",
+  "Employees.Delete": "Çalışan silme",
+
+  // PriceGroups
+  "PriceGroups.Create": "Fiyat grubu oluşturma",
+  "PriceGroups.View": "Fiyat grubu görüntüleme",
+  "PriceGroups.Edit": "Fiyat grubu düzenleme",
+  "PriceGroups.Delete": "Fiyat grubu silme",
+
   // Webhooks
   "Webhooks.View": "Webhook görüntüleme",
   "Webhooks.Process": "Webhook işleme",
@@ -87,6 +111,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "ESim.View", "ESim.Activate",
     "Users.Create", "Users.View", "Users.Edit",
     "Dealers.Create", "Dealers.View", "Dealers.Edit",
+    "Distributors.Create", "Distributors.View", "Distributors.Edit",
+    "SubDealers.Create", "SubDealers.View", "SubDealers.Edit",
+    "Employees.Create", "Employees.View", "Employees.Edit",
+    "PriceGroups.Create", "PriceGroups.View", "PriceGroups.Edit",
     "Reports.View", "Reports.Export",
     "Webhooks.View",
   ],
@@ -97,6 +125,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "ESim.View", "ESim.Activate",
     "Users.View",
     "Dealers.View",
+    "Distributors.View",
+    "SubDealers.View",
+    "Employees.View",
+    "PriceGroups.View",
     "Reports.View",
     "Webhooks.View",
   ],
@@ -106,6 +138,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "Products.View",
     "ESim.View", "ESim.Activate",
     "Users.Create", "Users.View", "Users.Edit",
+    "Dealers.Create", "Dealers.View", "Dealers.Edit",
+    "SubDealers.Create", "SubDealers.View", "SubDealers.Edit",
+    "Employees.Create", "Employees.View", "Employees.Edit",
+    "PriceGroups.View",
     "Reports.View",
   ],
 
@@ -114,6 +150,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "Products.View",
     "ESim.View",
     "Users.View",
+    "Dealers.View",
+    "SubDealers.View",
+    "Employees.View",
+    "PriceGroups.View",
     "Reports.View",
   ],
 
@@ -122,6 +162,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "Products.View",
     "ESim.View", "ESim.Activate",
     "Users.View",
+    "Dealers.View",
+    "SubDealers.View",
+    "Employees.View",
+    "PriceGroups.View",
     "Reports.View",
   ],
 
@@ -130,6 +174,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "Products.View",
     "ESim.View",
     "Users.View",
+    "Dealers.View",
+    "SubDealers.View",
+    "Employees.View",
+    "PriceGroups.View",
     "Reports.View",
   ],
 
@@ -137,6 +185,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     "Orders.View",
     "Products.View",
     "ESim.View",
+    "PriceGroups.View",
     "Reports.View",
   ],
 

@@ -5,6 +5,7 @@ import type {
   Dealer,
   SubDealer,
   User,
+  Customer,
   Prisma,
   UserRole,
 } from "@prisma/client";
@@ -14,6 +15,7 @@ import type {
   DealerQuery,
   SubDealerQuery,
   EmployeeQuery,
+  CustomerQuery,
   CreateDistributorInput,
   CreateDealerInput,
   CreateSubDealerInput,
@@ -204,5 +206,47 @@ export class EmployeeRepository {
         subDealer: { select: { id: true, name: true } },
       },
     });
+  }
+}
+
+// ─── Customer ───
+
+export class CustomerRepository extends BaseRepository<
+  Customer,
+  Prisma.CustomerCreateInput,
+  Prisma.CustomerUpdateInput
+> {
+  constructor() { super("customer"); }
+
+  async findManyByTenant(query: CustomerQuery) {
+    const { tenantId, distributorId, dealerId, subDealerId, search, isActive, page = 1, pageSize = 20 } = query;
+    const where: Prisma.CustomerWhereInput = { tenantId, deletedAt: null };
+    if (distributorId) { where.distributorId = distributorId; }
+    if (dealerId) { where.dealerId = dealerId; }
+    if (subDealerId) { where.subDealerId = subDealerId; }
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: "insensitive" as const } },
+        { firstName: { contains: search, mode: "insensitive" as const } },
+        { lastName: { contains: search, mode: "insensitive" as const } },
+      ];
+    }
+    if (isActive !== undefined) { where.isActive = isActive; }
+
+    const [data, total] = await Promise.all([
+      prisma.customer.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: "desc" },
+        include: {
+          distributor: { select: { id: true, name: true } },
+          dealer: { select: { id: true, name: true } },
+          subDealer: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.customer.count({ where }),
+    ]);
+    return { data, total, page, pageSize };
   }
 }

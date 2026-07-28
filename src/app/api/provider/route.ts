@@ -14,8 +14,8 @@ export async function GET(): Promise<NextResponse> {
   try {
     const provider = await getActiveProvider();
     const [plans, countries] = await Promise.all([
-      provider.fetchPlans(),
-      provider.fetchCountries(),
+      provider.getProducts(),
+      provider.getCountries(),
     ]);
 
     return NextResponse.json({

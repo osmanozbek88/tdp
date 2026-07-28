@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
 import { dealerController } from "@/modules/organization/controller";
-import { handleApiError } from "@/lib/error-handler";
+import { withPermission } from "@/lib/auth/with-permission";
 
-export const POST = async (req: NextRequest, { params }: { params: { id: string } }) => {
-  try { return await dealerController.toggleStatus(req, { params }); }
-  catch (e) { return handleApiError(e); }
-};
+export const POST = withPermission("Dealers.Edit", async (req: NextRequest, { params }: { params: { id: string } }) => {
+  return dealerController.toggleStatus(req, { params });
+});
 
 export const runtime = "nodejs";

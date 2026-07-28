@@ -39,6 +39,17 @@ export interface Provider {
   /** Fetch supported regions for a country. */
   fetchRegions(countryCode: string): Promise<ProviderCountry["regions"]>;
 
+  // ─── Product / Catalog (checklist aliases) ───
+
+  /** @alias fetchPlans — Fetch the full product catalogue. */
+  getProducts(): Promise<ProviderPlan[]>;
+
+  /** @alias fetchCountries — Fetch supported countries with regions. */
+  getCountries(): Promise<ProviderCountry[]>;
+
+  /** @alias fetchRegions — Fetch supported regions for a country. */
+  getRegions(countryCode: string): Promise<ProviderCountry["regions"]>;
+
   // ─── Subscriber / Account ───
 
   /** Register a new subscriber account with the provider. */
@@ -66,6 +77,9 @@ export interface Provider {
   /** Get full eSIM profile details by ICCID. */
   getEsimProfile(iccid: string): Promise<ProviderEsimProfile>;
 
+  /** @alias getEsimProfile — Get full eSIM details by ICCID. */
+  getEsimDetails(iccid: string): Promise<ProviderEsimProfile>;
+
   /** Activate an eSIM — transition released → downloaded. */
   activateEsim(iccid: string): Promise<ProviderEsimActivation>;
 
@@ -92,6 +106,13 @@ export interface Provider {
 
   /** Get a usage summary for an eSIM. */
   getUsageSummary(
+    iccid: string,
+    periodStart?: string,
+    periodEnd?: string,
+  ): Promise<ProviderUsageSummary>;
+
+  /** @alias getUsageSummary — Get combined usage data for an eSIM. */
+  getUsage(
     iccid: string,
     periodStart?: string,
     periodEnd?: string,

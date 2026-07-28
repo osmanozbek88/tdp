@@ -1,18 +1,13 @@
-
-
 import { NextRequest } from "next/server";
 import { distributorController } from "@/modules/organization/controller";
-import { handleApiError } from "@/lib/error-handler";
+import { withPermission } from "@/lib/auth/with-permission";
 
-export const GET = async (req: NextRequest) => {
-  try { return await distributorController.list(req); }
-  catch (e) { return handleApiError(e); }
-};
+export const GET = withPermission("Distributors.View", async (req: NextRequest) => {
+  return distributorController.list(req);
+});
 
-export const POST = async (req: NextRequest) => {
-  try { return await distributorController.create(req); }
-  catch (e) { return handleApiError(e); }
-};
+export const POST = withPermission("Distributors.Create", async (req: NextRequest) => {
+  return distributorController.create(req);
+});
 
 export const runtime = "nodejs";
-

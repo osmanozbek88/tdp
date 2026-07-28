@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
 import { priceGroupController } from "@/modules/organization/controller";
-import { handleApiError } from "@/lib/error-handler";
+import { withPermission } from "@/lib/auth/with-permission";
 
-export const POST = async (req: NextRequest, { params }: { params: { id: string } }) => {
-  try { return await priceGroupController.toggleStatus(req, { params }); }
-  catch (e) { return handleApiError(e); }
-};
+export const POST = withPermission("PriceGroups.Edit", async (req: NextRequest, { params }: { params: { id: string } }) => {
+  return priceGroupController.toggleStatus(req, { params });
+});
 
 export const runtime = "nodejs";

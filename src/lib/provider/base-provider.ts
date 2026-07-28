@@ -81,6 +81,20 @@ export abstract class BaseProvider implements Provider {
     return this.wrap("fetchRegions", () => this._fetchRegions(countryCode));
   }
 
+  // ─── Product / Catalog aliases (FAZ 4 checklist names) ───
+
+  async getProducts(): Promise<ProviderPlan[]> {
+    return this.fetchPlans();
+  }
+
+  async getCountries(): Promise<ProviderCountry[]> {
+    return this.fetchCountries();
+  }
+
+  async getRegions(countryCode: string): Promise<ProviderCountry["regions"]> {
+    return this.fetchRegions(countryCode);
+  }
+
   async createSubscriber(request: CreateSubscriberRequest): Promise<ProviderSubscriber> {
     return this.wrap("createSubscriber", () => this._createSubscriber(request));
   }
@@ -107,6 +121,12 @@ export abstract class BaseProvider implements Provider {
 
   async getEsimProfile(iccid: string): Promise<ProviderEsimProfile> {
     return this.wrap("getEsimProfile", () => this._getEsimProfile(iccid));
+  }
+
+  // ─── eSIM alias (FAZ 4 checklist name) ───
+
+  async getEsimDetails(iccid: string): Promise<ProviderEsimProfile> {
+    return this.getEsimProfile(iccid);
   }
 
   async activateEsim(iccid: string): Promise<ProviderEsimActivation> {
@@ -139,6 +159,12 @@ export abstract class BaseProvider implements Provider {
 
   async getUsageSummary(iccid: string, periodStart?: string, periodEnd?: string): Promise<ProviderUsageSummary> {
     return this.wrap("getUsageSummary", () => this._getUsageSummary(iccid, periodStart, periodEnd));
+  }
+
+  // ─── Usage alias (FAZ 4 checklist name) ───
+
+  async getUsage(iccid: string, periodStart?: string, periodEnd?: string): Promise<ProviderUsageSummary> {
+    return this.getUsageSummary(iccid, periodStart, periodEnd);
   }
 
   async getBillingRecords(accountId: string, periodStart?: string, periodEnd?: string): Promise<ProviderBillingRecord[]> {

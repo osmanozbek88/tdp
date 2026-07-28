@@ -107,6 +107,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [orderCountPeriod, setOrderCountPeriod] = useState<"today" | "month">("today");
+  const [revenuePeriod, setRevenuePeriod] = useState<"today" | "month">("today");
 
   const fetchData = useCallback(async () => {
     try {
@@ -187,12 +189,45 @@ export default function DashboardPage() {
           icon={TrendingUp}
           subtitle="Bu ay"
         />
-        <StatCard
-          title="Sipariş Sayısı"
-          value={String(data.orderCount.today)}
-          icon={ShoppingCart}
-          subtitle={`${data.orderCount.thisMonth} bu ay`}
-        />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Sipariş Sayısı
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {orderCountPeriod === "today"
+                ? data.orderCount.today
+                : data.orderCount.thisMonth}
+            </div>
+            <div className="mt-2 flex gap-1">
+              <button
+                onClick={() => setOrderCountPeriod("today")}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                  orderCountPeriod === "today"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Bugün
+              </button>
+              <button
+                onClick={() => setOrderCountPeriod("month")}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                  orderCountPeriod === "month"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Bu Ay
+              </button>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -230,18 +265,60 @@ export default function DashboardPage() {
           icon={Users}
           subtitle="Toplam kayıtlı müşteri"
         />
-        <StatCard
-          title="Bugünkü Gelir"
-          value={formatCurrency(data.sales.daily)}
-          icon={DollarSign}
-          subtitle="Completed siparişler"
-        />
-        <StatCard
-          title="Aylık Gelir"
-          value={formatCurrency(data.sales.monthly)}
-          icon={TrendingUp}
-          subtitle="Completed siparişler"
-        />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Gelir
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <DollarSign className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {revenuePeriod === "today"
+                ? formatCurrency(data.sales.daily)
+                : formatCurrency(data.sales.monthly)}
+            </div>
+            <div className="mt-2 flex gap-1">
+              <button
+                onClick={() => setRevenuePeriod("today")}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                  revenuePeriod === "today"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Bugün
+              </button>
+              <button
+                onClick={() => setRevenuePeriod("month")}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                  revenuePeriod === "month"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Bu Ay
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Completed siparişler</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Para Birimi
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.sales.currency}</div>
+            <p className="text-xs text-muted-foreground mt-1">Tüm işlemler bu para biriminde</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Orders — full width */}

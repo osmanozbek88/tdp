@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import {
   Building2, Building, Users, UserPlus, Search, RefreshCw,
-  DollarSign, Percent, Tag, Pencil,
+  DollarSign, Percent, Tag, Pencil, Trash2,
 } from "lucide-react";
 
 // ─── Types ───
@@ -80,12 +81,27 @@ interface PriceGroupRow {
   _count?: { distributors: number; dealers: number; subDealers: number };
 }
 
+interface CustomerRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  isActive: boolean;
+  distributorId?: string | null;
+  dealerId?: string | null;
+  subDealerId?: string | null;
+  distributor?: { id: string; name: string } | null;
+  dealer?: { id: string; name: string } | null;
+  subDealer?: { id: string; name: string } | null;
+}
+
 interface PaginatedResult<T> {
   data: T[];
   meta: { page: number; pageSize: number; total: number };
 }
 
-type Tab = "distributors" | "dealers" | "sub-dealers" | "employees" | "price-groups";
+type Tab = "distributors" | "dealers" | "sub-dealers" | "employees" | "price-groups" | "customers";
 
 // ─── Form types ───
 
@@ -108,12 +124,17 @@ interface EmployeeForm {
 interface PriceGroupForm {
   name: string; markupPercent: number;
 }
+interface CustomerForm {
+  firstName: string; lastName: string; email: string; phone: string;
+  distributorId: string; dealerId: string; subDealerId: string;
+}
 
 const EMPTY_DIST: DistributorForm = { name: "", code: "", email: "", phone: "", address: "", commissionRate: 0, priceGroupId: "", balance: 0 };
 const EMPTY_DEALER: DealerForm = { ...EMPTY_DIST, distributorId: "" };
 const EMPTY_SUB: SubDealerForm = { ...EMPTY_DEALER, dealerId: "" };
 const EMPTY_EMP: EmployeeForm = { firstName: "", lastName: "", email: "", password: "", role: "EMPLOYEE", distributorId: "", dealerId: "", subDealerId: "" };
 const EMPTY_PG: PriceGroupForm = { name: "", markupPercent: 0 };
+const EMPTY_CUST: CustomerForm = { firstName: "", lastName: "", email: "", phone: "", distributorId: "", dealerId: "", subDealerId: "" };
 
 // ─── Helpers ───
 
@@ -143,6 +164,7 @@ const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: s
   { key: "sub-dealers", label: "Alt Bayiler", icon: Building },
   { key: "employees", label: "Personel", icon: Users },
   { key: "price-groups", label: "Fiyat Grupları", icon: Tag },
+  { key: "customers", label: "Müşteriler", icon: Users },
 ];
 
 // ─── Page ───
@@ -162,6 +184,8 @@ export default function OrganizationPage() {
   const [sf, setSf] = useState<SubDealerForm>(EMPTY_SUB);
   const [ef, setEf] = useState<EmployeeForm>(EMPTY_EMP);
   const [pf, setPf] = useState<PriceGroupForm>(EMPTY_PG);
+  const [cf, setCf] = useState<CustomerForm>(EMPTY_CUST);
+  const [filterActive, setFilterActive] = useState<string>("all");
   const [saving, setSaving] = useState(false);
 
   // reference data
@@ -173,6 +197,7 @@ export default function OrganizationPage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
+    if (filterActive !== "all") params.set("isActive", filterActive);
     params.set("page", String(meta.page));
     params.set("pageSize", String(meta.pageSize));
     const url = `/api/v1/${activeTab}?${params}`;
@@ -202,9 +227,15 @@ export default function OrganizationPage() {
     fetchData();
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+    const res = await fetch(`/api/v1/${activeTab}/${id}`, { method: "DELETE", credentials: "include" });
+    if (res.ok) fetchData();
+  };
+
   const openAdd = () => {
     setEditItem(null);
-    setDf(EMPTY_DIST); setDlf(EMPTY_DEALER); setSf(EMPTY_SUB); setEf(EMPTY_EMP); setPf(EMPTY_PG);
+    setDf(EMPTY_DIST); setDlf(EMPTY_DEALER); setSf(EMPTY_SUB); setEf(EMPTY_EMP); setPf(EMPTY_PG); setCf(EMPTY_CUST);
     setModalOpen(true);
   };
 
@@ -216,6 +247,7 @@ export default function OrganizationPage() {
     else if (activeTab === "sub-dealers") setSf({ name: i.name as string, code: i.code as string, email: i.email as string, phone: (i.phone as string) ?? "", address: (i.address as string) ?? "", commissionRate: Number(i.commissionRate ?? 0), priceGroupId: (i.priceGroupId as string) ?? "", distributorId: (i.distributorId as string) ?? "", dealerId: (i.dealerId as string) ?? "", balance: Number(i.balance ?? 0) });
     else if (activeTab === "employees") setEf({ firstName: i.firstName as string, lastName: i.lastName as string, email: i.email as string, password: "", role: i.role as string, distributorId: (i.distributorId as string) ?? "", dealerId: (i.dealerId as string) ?? "", subDealerId: (i.subDealerId as string) ?? "" });
     else if (activeTab === "price-groups") setPf({ name: i.name as string, markupPercent: Number(i.markupPercent ?? 0) });
+    else if (activeTab === "customers") setCf({ firstName: i.firstName as string, lastName: i.lastName as string, email: i.email as string, phone: (i.phone as string) ?? "", distributorId: (i.distributorId as string) ?? "", dealerId: (i.dealerId as string) ?? "", subDealerId: (i.subDealerId as string) ?? "" });
     setModalOpen(true);
   };
 
@@ -230,6 +262,7 @@ export default function OrganizationPage() {
     else if (activeTab === "sub-dealers") body = { ...sf, commissionRate: Number(sf.commissionRate), balance: Number(sf.balance), distributorId: sf.distributorId || null, dealerId: sf.dealerId || null, priceGroupId: sf.priceGroupId || null };
     else if (activeTab === "employees") body = { ...ef, password: ef.password || undefined, distributorId: ef.distributorId || null, dealerId: ef.dealerId || null, subDealerId: ef.subDealerId || null };
     else if (activeTab === "price-groups") body = { ...pf, markupPercent: Number(pf.markupPercent) };
+    else if (activeTab === "customers") body = { ...cf, distributorId: cf.distributorId || null, dealerId: cf.dealerId || null, subDealerId: cf.subDealerId || null };
 
     const method = id ? "PATCH" : "POST";
     const url = id ? `/api/v1/${activeTab}/${id}` : `/api/v1/${activeTab}`;
@@ -292,6 +325,32 @@ export default function OrganizationPage() {
             className="pl-10"
           />
         </div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => { setFilterActive("all"); setMeta((p) => ({ ...p, page: 1 })); }}
+            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterActive === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            Tümü
+          </button>
+          <button
+            onClick={() => { setFilterActive("true"); setMeta((p) => ({ ...p, page: 1 })); }}
+            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterActive === "true" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            Aktif
+          </button>
+          <button
+            onClick={() => { setFilterActive("false"); setMeta((p) => ({ ...p, page: 1 })); }}
+            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              filterActive === "false" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            Pasif
+          </button>
+        </div>
         <Button variant="outline" size="icon" onClick={fetchData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -309,15 +368,17 @@ export default function OrganizationPage() {
           ) : data.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-muted-foreground">Kayıt bulunamadı</div>
           ) : activeTab === "distributors" ? (
-            <DistributorTable data={data as DistributorRow[]} onToggle={toggleStatus} onEdit={openEdit} />
+            <DistributorTable data={data as DistributorRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
           ) : activeTab === "dealers" ? (
-            <DealerTable data={data as DealerRow[]} onToggle={toggleStatus} onEdit={openEdit} />
+            <DealerTable data={data as DealerRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
           ) : activeTab === "sub-dealers" ? (
-            <SubDealerTable data={data as SubDealerRow[]} onToggle={toggleStatus} onEdit={openEdit} />
+            <SubDealerTable data={data as SubDealerRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
           ) : activeTab === "employees" ? (
-            <EmployeeTable data={data as EmployeeRow[]} onToggle={toggleStatus} onEdit={openEdit} />
+            <EmployeeTable data={data as EmployeeRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
+          ) : activeTab === "price-groups" ? (
+            <PriceGroupTable data={data as PriceGroupRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
           ) : (
-            <PriceGroupTable data={data as PriceGroupRow[]} onToggle={toggleStatus} onEdit={openEdit} />
+            <CustomerTable data={data as CustomerRow[]} onToggle={toggleStatus} onEdit={openEdit} onDelete={handleDelete} />
           )}
 
           {/* Pagination */}
@@ -463,13 +524,31 @@ export default function OrganizationPage() {
       </>
     );
 
+    if (activeTab === "customers") return (
+      <>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Ad</Label><Input value={cf.firstName} onChange={e => setCf({...cf, firstName: e.target.value})} /></div>
+          <div><Label>Soyad</Label><Input value={cf.lastName} onChange={e => setCf({...cf, lastName: e.target.value})} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>E-posta</Label><Input type="email" value={cf.email} onChange={e => setCf({...cf, email: e.target.value})} /></div>
+          <div><Label>Telefon</Label><Input value={cf.phone} onChange={e => setCf({...cf, phone: e.target.value})} /></div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div><Label>Distribütör</Label><Combobox options={distributors} value={cf.distributorId} onChange={v => setCf({...cf, distributorId: v, dealerId: "", subDealerId: ""})} placeholder="İsteğe bağlı" /></div>
+          <div><Label>Bayi</Label><Combobox options={dealers} value={cf.dealerId} onChange={v => setCf({...cf, dealerId: v, subDealerId: ""})} placeholder="İsteğe bağlı" /></div>
+          <div><Label>Alt Bayi</Label><Combobox options={dealers.length > 0 ? [{value: "", label: "Seçiniz..."}] : []} value={cf.subDealerId} onChange={v => setCf({...cf, subDealerId: v})} placeholder="İsteğe bağlı" /></div>
+        </div>
+      </>
+    );
+
     return null;
   }
 }
 
 // ─── Table Components ───
 
-function DistributorTable({ data, onToggle, onEdit }: { data: DistributorRow[]; onToggle: (id: string) => void; onEdit: (item: DistributorRow) => void }) {
+function DistributorTable({ data, onToggle, onEdit, onDelete }: { data: DistributorRow[]; onToggle: (id: string) => void; onEdit: (item: DistributorRow) => void; onDelete: (id: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -504,6 +583,9 @@ function DistributorTable({ data, onToggle, onEdit }: { data: DistributorRow[]; 
                 <Button variant="ghost" size="sm" onClick={() => onToggle(d.id)}>
                   {d.isActive ? "Pasif Yap" : "Aktif Yap"}
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(d.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -513,7 +595,7 @@ function DistributorTable({ data, onToggle, onEdit }: { data: DistributorRow[]; 
   );
 }
 
-function DealerTable({ data, onToggle, onEdit }: { data: DealerRow[]; onToggle: (id: string) => void; onEdit: (item: DealerRow) => void }) {
+function DealerTable({ data, onToggle, onEdit, onDelete }: { data: DealerRow[]; onToggle: (id: string) => void; onEdit: (item: DealerRow) => void; onDelete: (id: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -550,6 +632,9 @@ function DealerTable({ data, onToggle, onEdit }: { data: DealerRow[]; onToggle: 
                 <Button variant="ghost" size="sm" onClick={() => onToggle(d.id)}>
                   {d.isActive ? "Pasif Yap" : "Aktif Yap"}
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(d.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -559,7 +644,7 @@ function DealerTable({ data, onToggle, onEdit }: { data: DealerRow[]; onToggle: 
   );
 }
 
-function SubDealerTable({ data, onToggle, onEdit }: { data: SubDealerRow[]; onToggle: (id: string) => void; onEdit: (item: SubDealerRow) => void }) {
+function SubDealerTable({ data, onToggle, onEdit, onDelete }: { data: SubDealerRow[]; onToggle: (id: string) => void; onEdit: (item: SubDealerRow) => void; onDelete: (id: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -594,6 +679,9 @@ function SubDealerTable({ data, onToggle, onEdit }: { data: SubDealerRow[]; onTo
                 <Button variant="ghost" size="sm" onClick={() => onToggle(d.id)}>
                   {d.isActive ? "Pasif Yap" : "Aktif Yap"}
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(d.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -603,7 +691,7 @@ function SubDealerTable({ data, onToggle, onEdit }: { data: SubDealerRow[]; onTo
   );
 }
 
-function EmployeeTable({ data, onToggle, onEdit }: { data: EmployeeRow[]; onToggle: (id: string) => void; onEdit: (item: EmployeeRow) => void }) {
+function EmployeeTable({ data, onToggle, onEdit, onDelete }: { data: EmployeeRow[]; onToggle: (id: string) => void; onEdit: (item: EmployeeRow) => void; onDelete: (id: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -634,6 +722,9 @@ function EmployeeTable({ data, onToggle, onEdit }: { data: EmployeeRow[]; onTogg
                 <Button variant="ghost" size="sm" onClick={() => onToggle(e.id)}>
                   {e.isActive ? "Pasif Yap" : "Aktif Yap"}
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(e.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -643,7 +734,7 @@ function EmployeeTable({ data, onToggle, onEdit }: { data: EmployeeRow[]; onTogg
   );
 }
 
-function PriceGroupTable({ data, onToggle, onEdit }: { data: PriceGroupRow[]; onToggle: (id: string) => void; onEdit: (item: PriceGroupRow) => void }) {
+function PriceGroupTable({ data, onToggle, onEdit, onDelete }: { data: PriceGroupRow[]; onToggle: (id: string) => void; onEdit: (item: PriceGroupRow) => void; onDelete: (id: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -674,6 +765,9 @@ function PriceGroupTable({ data, onToggle, onEdit }: { data: PriceGroupRow[]; on
                 <Button variant="ghost" size="sm" onClick={() => onToggle(pg.id)}>
                   {pg.isActive ? "Pasif Yap" : "Aktif Yap"}
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(pg.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -683,3 +777,49 @@ function PriceGroupTable({ data, onToggle, onEdit }: { data: PriceGroupRow[]; on
   );
 }
 
+function CustomerTable({ data, onToggle, onEdit, onDelete }: { data: CustomerRow[]; onToggle: (id: string) => void; onEdit: (item: CustomerRow) => void; onDelete: (id: string) => void }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>İsim</TableHead>
+          <TableHead>E-posta</TableHead>
+          <TableHead>Telefon</TableHead>
+          <TableHead>Bağlı Olduğu</TableHead>
+          <TableHead>Durum</TableHead>
+          <TableHead className="text-right">İşlem</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((c) => (
+          <TableRow key={c.id}>
+            <TableCell className="font-medium">
+              <Link href={`/dashboard/customers/${c.id}`} className="hover:underline text-primary">
+                {c.firstName} {c.lastName}
+              </Link>
+            </TableCell>
+            <TableCell>{c.email}</TableCell>
+            <TableCell>{c.phone ?? "-"}</TableCell>
+            <TableCell>
+              {c.distributor?.name ?? c.dealer?.name ?? c.subDealer?.name ?? "-"}
+            </TableCell>
+            <TableCell>{statusBadge(c.isActive)}</TableCell>
+            <TableCell className="text-right">
+              <div className="flex items-center justify-end gap-1">
+                <Button variant="ghost" size="icon" onClick={() => onEdit(c)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onToggle(c.id)}>
+                  {c.isActive ? "Pasif Yap" : "Aktif Yap"}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(c.id)} className="text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

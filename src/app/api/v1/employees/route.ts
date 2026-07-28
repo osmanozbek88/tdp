@@ -1,15 +1,13 @@
 import { NextRequest } from "next/server";
 import { employeeController } from "@/modules/organization/controller";
-import { handleApiError } from "@/lib/error-handler";
+import { withPermission } from "@/lib/auth/with-permission";
 
-export const GET = async (req: NextRequest) => {
-  try { return await employeeController.list(req); }
-  catch (e) { return handleApiError(e); }
-};
+export const GET = withPermission("Employees.View", async (req: NextRequest) => {
+  return employeeController.list(req);
+});
 
-export const POST = async (req: NextRequest) => {
-  try { return await employeeController.create(req); }
-  catch (e) { return handleApiError(e); }
-};
+export const POST = withPermission("Employees.Create", async (req: NextRequest) => {
+  return employeeController.create(req);
+});
 
 export const runtime = "nodejs";

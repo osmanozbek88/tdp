@@ -58,4 +58,10 @@ export class PriceGroupService extends BaseService {
     if (!pg) throw new NotFoundError("PriceGroup", id);
     return prisma.priceGroup.update({ where: { id }, data: { isActive: !pg.isActive } });
   }
+
+  async delete(id: string) {
+    const pg = await prisma.priceGroup.findUnique({ where: { id } });
+    if (!pg) throw new NotFoundError("PriceGroup", id);
+    return prisma.priceGroup.update({ where: { id }, data: { isActive: false } });
+  }
 }
