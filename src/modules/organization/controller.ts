@@ -83,7 +83,9 @@ const employeeUpdateSchema = z.object({
 
 // ─── Helpers ───
 
-const TENANT_ID = "default"; // TODO: JWT'den al
+function getTenantId(req: NextRequest): string {
+  return req.headers.get("x-user-tenant-id") ?? "default";
+}
 
 function parseQuery(req: NextRequest) {
   const url = new URL(req.url);
@@ -106,7 +108,7 @@ export const distributorController = {
   async list(req: NextRequest) {
     const service = new DistributorService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -120,7 +122,7 @@ export const distributorController = {
     const body = await req.json();
     const input = distributorSchema.parse(body);
     const service = new DistributorService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 
@@ -149,7 +151,7 @@ export const dealerController = {
   async list(req: NextRequest) {
     const service = new DealerService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -163,7 +165,7 @@ export const dealerController = {
     const body = await req.json();
     const input = dealerSchema.parse(body);
     const service = new DealerService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 
@@ -192,7 +194,7 @@ export const subDealerController = {
   async list(req: NextRequest) {
     const service = new SubDealerService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -206,7 +208,7 @@ export const subDealerController = {
     const body = await req.json();
     const input = subDealerSchema.parse(body);
     const service = new SubDealerService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 
@@ -244,7 +246,7 @@ export const priceGroupController = {
   async list(req: NextRequest) {
     const service = new PriceGroupService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -258,7 +260,7 @@ export const priceGroupController = {
     const body = await req.json();
     const input = priceGroupSchema.parse(body);
     const service = new PriceGroupService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 
@@ -304,7 +306,7 @@ export const customerController = {
   async list(req: NextRequest) {
     const service = new CustomerService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -318,7 +320,7 @@ export const customerController = {
     const body = await req.json();
     const input = customerSchema.parse(body);
     const service = new CustomerService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 
@@ -349,7 +351,7 @@ export const employeeController = {
   async list(req: NextRequest) {
     const service = new EmployeeService();
     const query = parseQuery(req);
-    const result = await service.list({ ...query, tenantId: TENANT_ID });
+    const result = await service.list({ ...query, tenantId: getTenantId(req) });
     return sendSuccess(result.data, { page: result.page, pageSize: result.pageSize, total: result.total });
   },
 
@@ -363,7 +365,7 @@ export const employeeController = {
     const body = await req.json();
     const input = employeeSchema.parse(body);
     const service = new EmployeeService();
-    const result = await service.create(TENANT_ID, input);
+    const result = await service.create(getTenantId(req), input);
     return sendCreated(result);
   },
 

@@ -481,7 +481,4 @@ model SupportTicket {
   resolvedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  customer Customer @relation(fields: [customerId], references: [id])
-  tenant   Tenant   @relation(fields: [tenantId], references: [id])
 }

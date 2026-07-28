@@ -124,6 +124,39 @@ async function main() {
   });
   console.log(`  ✓ Dealer User: ${dealerUser.email} / şifre: dealer123`);
 
+  // ── Sample Customers ──
+  const customer1 = await prisma.customer.upsert({
+    where: { email: "musteri1@tdp.com.tr" },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      distributorId: distributor.id,
+      email: "musteri1@tdp.com.tr",
+      firstName: "Ahmet",
+      lastName: "Yılmaz",
+      phone: "+905551110011",
+      countryCode: "TR",
+      isActive: true,
+    },
+  });
+  console.log(`  ✓ Customer: ${customer1.email}`);
+
+  const customer2 = await prisma.customer.upsert({
+    where: { email: "musteri2@tdp.com.tr" },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      dealerId: dealer.id,
+      email: "musteri2@tdp.com.tr",
+      firstName: "Ayşe",
+      lastName: "Demir",
+      phone: "+905552220022",
+      countryCode: "TR",
+      isActive: true,
+    },
+  });
+  console.log(`  ✓ Customer: ${customer2.email}`);
+
   console.log("\n✅ Seed completed successfully!");
 }
 
