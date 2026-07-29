@@ -260,6 +260,10 @@ model Product {
   currency        String   @default("USD")
   price           Decimal
   costPrice       Decimal?
+  dataGB          Float?     // Provider'dan çekilen GB miktarı
+  durationDays    Int?       // Provider'dan çekilen gün sayısı
+  dealerPrice     Decimal?   // Dağıtıcının belirlediği bayi fiyatı
+  profitMargin    Decimal?   // Kar oranı (%)
   specifications  Json?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
